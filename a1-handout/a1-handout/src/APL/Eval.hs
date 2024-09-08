@@ -11,6 +11,7 @@ import APL.AST (Exp (..), VName)
 data Val
   = ValInt Integer
   | ValBool Bool
+  | ValFun Env VName Exp
   deriving (Eq, Show)
 
 type Env = [(VName, Val)]
@@ -78,5 +79,17 @@ eval env (Let var e1 e2) =
   case eval env e1 of
     Left err -> Left err
     Right v -> eval (envExtend var v env) e2
+eval env (Lambda var e1) = 
+  Right (ValFun env var e1)
+eval env (Apply funE argE) = 
+  case eval env funE of
+    Left err -> Left err
+    Right (ValFun env2 name e2) -> 
+      case eval env argE of 
+        Left err -> Left err
+        Right argV -> eval (envExtend name argV env2) e2
+    Right _ -> Left "error non ValFun"
+
+
 
 -- TODO: Add cases after extending Exp.
