@@ -105,12 +105,16 @@ tests =
         eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3))
           @?= Right (ValInt 5),
       --
-      testCase "Apply, no FunVal" $
+      testCase "Apply, no ValFun" $
         eval envEmpty (Apply (CstInt 2) (CstInt 2)) 
           @?= Left "error non ValFun",
       --
-      testCase "Apply, FunVal as second Exp" $
+      testCase "Apply, ValFun as second Exp" $
         eval envEmpty (Apply (CstInt 3) (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))) 
-          @?= Left "error non ValFun"
+          @?= Left "error non ValFun",
+      --
+      testCase "Apply, Both Lambda (ValFun) Inputs" $
+        eval envEmpty (Apply (Lambda "x" (Add (Var "x") (Var "y"))) (Lambda "y" (Add (Var "x") (Var "y"))))
+          @?= Left "Unknown variable: y"
 
     ]
