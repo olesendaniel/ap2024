@@ -4,6 +4,7 @@ import APL.AST (Exp (..))
 import APL.Eval (Val (..), envEmpty, eval)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
+import Data.Type.Equality (apply)
 
 -- -- Consider this example when you have added the necessary constructors.
 -- -- The Y combinator in a form suitable for strict evaluation.
@@ -96,8 +97,20 @@ tests =
         eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))
           @?= Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var"y"))),
       -- 
+      testCase "Lambda, empty env" $
+        eval envEmpty (Lambda "x" (CstInt 7)) 
+          @?= Right (ValFun [] "x" (CstInt 7)),
+      --
       testCase "Apply" $
         eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3))
-          @?= Right (ValInt 5)
+          @?= Right (ValInt 5),
       --
+      testCase "Apply, no FunVal" $
+        eval envEmpty (Apply (CstInt 2) (CstInt 2)) 
+          @?= Left "error non ValFun",
+      --
+      testCase "Apply, FunVal as second Exp" $
+        eval envEmpty (Apply (CstInt 3) (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))) 
+          @?= Left "error non ValFun"
+
     ]
