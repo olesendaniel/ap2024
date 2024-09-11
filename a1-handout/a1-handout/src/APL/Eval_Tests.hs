@@ -123,6 +123,10 @@ tests =
       --
       testCase "Try-Catch Var Missing" $
         eval envEmpty (TryCatch (Var "missing") (CstInt 1))
-          @?= Right (ValInt 1)
+          @?= Right (ValInt 1),
+      --
+      testCase "Try-Catch e1/e2 Errors" $
+        eval envEmpty (TryCatch (Var "missing") (Var "missing"))
+        @?= Left "Unknown variable: missing"
 
     ]
