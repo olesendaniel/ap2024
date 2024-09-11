@@ -79,6 +79,7 @@ eval env (Let var e1 e2) =
   case eval env e1 of
     Left err -> Left err
     Right v -> eval (envExtend var v env) e2
+-- Task: Functions
 eval env (Lambda var e1) = 
   Right (ValFun env var e1)
 eval env (Apply funE argE) = 
@@ -89,7 +90,14 @@ eval env (Apply funE argE) =
         Left err -> Left err
         Right argV -> eval (envExtend name argV env2) e2
     Right _ -> Left "error non ValFun"
+-- Task: try-catch
+eval env (TryCatch e1 e2) = 
+  case eval env e1 of
+    Right x -> Right x
+    Left _ -> eval env e2
 
 
 
--- TODO: Add cases after extending Exp.
+
+
+

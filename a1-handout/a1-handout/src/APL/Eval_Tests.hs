@@ -115,6 +115,14 @@ tests =
       --
       testCase "Apply, Both Lambda (ValFun) Inputs" $
         eval envEmpty (Apply (Lambda "x" (Add (Var "x") (Var "y"))) (Lambda "y" (Add (Var "x") (Var "y"))))
-          @?= Left "Unknown variable: y"
+          @?= Left "Unknown variable: y",
+      --
+      testCase "Try-Catch" $
+        eval envEmpty (TryCatch (CstInt 0) (CstInt 1))
+          @?= Right (ValInt 0),
+      --
+      testCase "Try-Catch Var Missing" $
+        eval envEmpty (TryCatch (Var "missing") (CstInt 1))
+          @?= Right (ValInt 1)
 
     ]
