@@ -1,0 +1,199 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module APL.Eval_Tests (tests) where
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>import APL.AST (Exp (..))
+<span class="lineno">    4 </span>import APL.Eval (Val (..), envEmpty, eval)
+<span class="lineno">    5 </span>import Test.Tasty (TestTree, testGroup)
+<span class="lineno">    6 </span>import Test.Tasty.HUnit (testCase, (@?=))
+<span class="lineno">    7 </span>--import Data.Type.Equality (apply)
+<span class="lineno">    8 </span>
+<span class="lineno">    9 </span>-- -- Consider this example when you have added the necessary constructors.
+<span class="lineno">   10 </span>-- -- The Y combinator in a form suitable for strict evaluation.
+<span class="lineno">   11 </span>-- yComb :: Exp
+<span class="lineno">   12 </span>-- yComb =
+<span class="lineno">   13 </span>--   Lambda &quot;f&quot; $
+<span class="lineno">   14 </span>--     Apply
+<span class="lineno">   15 </span>--       (Lambda &quot;g&quot; (Apply (Var &quot;g&quot;) (Var &quot;g&quot;)))
+<span class="lineno">   16 </span>--       ( Lambda
+<span class="lineno">   17 </span>--           &quot;g&quot;
+<span class="lineno">   18 </span>--           ( Apply
+<span class="lineno">   19 </span>--               (Var &quot;f&quot;)
+<span class="lineno">   20 </span>--               (Lambda &quot;a&quot; (Apply (Apply (Var &quot;g&quot;) (Var &quot;g&quot;)) (Var &quot;a&quot;)))
+<span class="lineno">   21 </span>--           )
+<span class="lineno">   22 </span>--       )
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>-- fact :: Exp
+<span class="lineno">   25 </span>-- fact =
+<span class="lineno">   26 </span>--   Apply yComb $
+<span class="lineno">   27 </span>--     Lambda &quot;rec&quot; $
+<span class="lineno">   28 </span>--       Lambda &quot;n&quot; $
+<span class="lineno">   29 </span>--         If
+<span class="lineno">   30 </span>--           (Eql (Var &quot;n&quot;) (CstInt 0))
+<span class="lineno">   31 </span>--           (CstInt 1)
+<span class="lineno">   32 </span>--           (Mul (Var &quot;n&quot;) (Apply (Var &quot;rec&quot;) (Sub (Var &quot;n&quot;) (CstInt 1))))
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>tests :: TestTree
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">tests =</span>
+<span class="lineno">   36 </span><span class="spaces">  </span><span class="istickedoff">testGroup</span>
+<span class="lineno">   37 </span><span class="spaces">    </span><span class="istickedoff">&quot;Evaluation&quot;</span>
+<span class="lineno">   38 </span><span class="spaces">    </span><span class="istickedoff">[ testCase &quot;Add&quot; $</span>
+<span class="lineno">   39 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Add (CstInt 2) (CstInt 5))</span>
+<span class="lineno">   40 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 7),</span>
+<span class="lineno">   41 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   42 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Add (wrong type)&quot; $</span>
+<span class="lineno">   43 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Add (CstInt <span class="nottickedoff">2</span>) (CstBool <span class="nottickedoff">True</span>))</span>
+<span class="lineno">   44 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Non-integer operand&quot;,</span>
+<span class="lineno">   45 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   46 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Sub&quot; $</span>
+<span class="lineno">   47 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Sub (CstInt 2) (CstInt 5))</span>
+<span class="lineno">   48 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt (-3)),</span>
+<span class="lineno">   49 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   50 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Mul&quot; $</span>
+<span class="lineno">   51 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Mul (CstInt 2) (CstInt 5))</span>
+<span class="lineno">   52 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 10),</span>
+<span class="lineno">   53 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   54 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Div&quot; $</span>
+<span class="lineno">   55 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Div (CstInt 7) (CstInt 3))</span>
+<span class="lineno">   56 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 2),</span>
+<span class="lineno">   57 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   58 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Div0&quot; $</span>
+<span class="lineno">   59 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Div (CstInt <span class="nottickedoff">7</span>) (CstInt 0))</span>
+<span class="lineno">   60 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">   61 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   62 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Pow&quot; $</span>
+<span class="lineno">   63 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Pow (CstInt 2) (CstInt 3))</span>
+<span class="lineno">   64 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 8),</span>
+<span class="lineno">   65 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   66 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Pow0&quot; $</span>
+<span class="lineno">   67 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Pow (CstInt <span class="nottickedoff">2</span>) (CstInt 0))</span>
+<span class="lineno">   68 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 1),</span>
+<span class="lineno">   69 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   70 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Pow negative&quot; $</span>
+<span class="lineno">   71 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Pow (CstInt <span class="nottickedoff">2</span>) (CstInt (-1)))</span>
+<span class="lineno">   72 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Negative exponent&quot;,</span>
+<span class="lineno">   73 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   74 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (right failure)&quot; $</span>
+<span class="lineno">   75 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (CstInt <span class="nottickedoff">2</span>) (Div (CstInt <span class="nottickedoff">2</span>) (CstInt 0)))</span>
+<span class="lineno">   76 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">   77 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   78 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (left failure)&quot; $</span>
+<span class="lineno">   79 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (Div (CstInt <span class="nottickedoff">2</span>) (CstInt 0)) <span class="nottickedoff">(CstInt 3)</span>)</span>
+<span class="lineno">   80 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">   81 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   82 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (false)&quot; $</span>
+<span class="lineno">   83 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (CstInt 2) (CstInt 3))</span>
+<span class="lineno">   84 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValBool False),</span>
+<span class="lineno">   85 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   86 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (2 bools)&quot; $</span>
+<span class="lineno">   87 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (CstBool True) (CstBool True))</span>
+<span class="lineno">   88 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValBool True),</span>
+<span class="lineno">   89 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   90 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (int and bool)&quot; $</span>
+<span class="lineno">   91 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (CstInt <span class="nottickedoff">2</span>) (CstBool <span class="nottickedoff">True</span>))</span>
+<span class="lineno">   92 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Invalid operands to equality&quot;,</span>
+<span class="lineno">   93 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   94 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Eql (true)&quot; $</span>
+<span class="lineno">   95 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Eql (CstInt 2) (CstInt 2))</span>
+<span class="lineno">   96 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValBool True),</span>
+<span class="lineno">   97 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">   98 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;If&quot; $</span>
+<span class="lineno">   99 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (If (CstBool True) (CstInt 2) <span class="nottickedoff">(Div (CstInt 7) (CstInt 0))</span>)</span>
+<span class="lineno">  100 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 2),</span>
+<span class="lineno">  101 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  102 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;If (false)&quot; $</span>
+<span class="lineno">  103 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (If (CstBool False) <span class="nottickedoff">(CstInt 2)</span> (Add (CstInt 7) (CstInt 1)))</span>
+<span class="lineno">  104 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 8),</span>
+<span class="lineno">  105 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  106 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;If (non-boolean failure)&quot; $</span>
+<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (If (CstInt <span class="nottickedoff">2</span>) <span class="nottickedoff">(CstInt 2)</span> <span class="nottickedoff">(Div (CstInt 7) (CstInt 7))</span>)</span>
+<span class="lineno">  108 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Non-boolean conditional.&quot;,</span>
+<span class="lineno">  109 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  110 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;If failure&quot; $</span>
+<span class="lineno">  111 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (If (Div (CstInt <span class="nottickedoff">2</span>) (CstInt 0)) <span class="nottickedoff">(CstInt 2)</span> <span class="nottickedoff">(Div (CstInt 7) (CstInt 7))</span>)</span>
+<span class="lineno">  112 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">  113 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  114 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Let&quot; $</span>
+<span class="lineno">  115 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Let &quot;x&quot; (Add (CstInt 2) (CstInt 3)) (Var &quot;x&quot;))</span>
+<span class="lineno">  116 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 5),</span>
+<span class="lineno">  117 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  118 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Let (shadowing)&quot; $</span>
+<span class="lineno">  119 </span><span class="spaces">        </span><span class="istickedoff">eval</span>
+<span class="lineno">  120 </span><span class="spaces">          </span><span class="istickedoff"><span class="nottickedoff">envEmpty</span></span>
+<span class="lineno">  121 </span><span class="spaces">          </span><span class="istickedoff">( Let</span>
+<span class="lineno">  122 </span><span class="spaces">              </span><span class="istickedoff"><span class="nottickedoff">&quot;x&quot;</span></span>
+<span class="lineno">  123 </span><span class="spaces">              </span><span class="istickedoff">(Add (CstInt <span class="nottickedoff">2</span>) (CstInt <span class="nottickedoff">3</span>))</span>
+<span class="lineno">  124 </span><span class="spaces">              </span><span class="istickedoff">(Let &quot;x&quot; (CstBool True) (Var &quot;x&quot;))</span>
+<span class="lineno">  125 </span><span class="spaces">          </span><span class="istickedoff">)</span>
+<span class="lineno">  126 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValBool True),</span>
+<span class="lineno">  127 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  128 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Let error&quot; $</span>
+<span class="lineno">  129 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Let <span class="nottickedoff">&quot;x&quot;</span> (Div (CstInt <span class="nottickedoff">2</span>) (CstInt 0)) <span class="nottickedoff">(Var &quot;x&quot;)</span>)</span>
+<span class="lineno">  130 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">  131 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  132 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Lambda&quot; $</span>
+<span class="lineno">  133 </span><span class="spaces">        </span><span class="istickedoff">eval envEmpty (Let &quot;x&quot; (CstInt 2) (Lambda &quot;y&quot; (Add (Var &quot;x&quot;) (Var &quot;y&quot;))))</span>
+<span class="lineno">  134 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValFun [(&quot;x&quot;, ValInt 2)] &quot;y&quot; (Add (Var &quot;x&quot;) (Var&quot;y&quot;))),</span>
+<span class="lineno">  135 </span><span class="spaces">      </span><span class="istickedoff">-- </span>
+<span class="lineno">  136 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Lambda, empty env&quot; $</span>
+<span class="lineno">  137 </span><span class="spaces">        </span><span class="istickedoff">eval envEmpty (Lambda &quot;x&quot; (CstInt 7)) </span>
+<span class="lineno">  138 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValFun [] &quot;x&quot; (CstInt 7)),</span>
+<span class="lineno">  139 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  140 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply&quot; $</span>
+<span class="lineno">  141 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Apply (Let &quot;x&quot; (CstInt 2) (Lambda &quot;y&quot; (Add (Var &quot;x&quot;) (Var &quot;y&quot;)))) (CstInt 3))</span>
+<span class="lineno">  142 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 5),</span>
+<span class="lineno">  143 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  144 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply, no ValFun&quot; $</span>
+<span class="lineno">  145 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Apply (CstInt <span class="nottickedoff">2</span>) <span class="nottickedoff">(CstInt 2)</span>) </span>
+<span class="lineno">  146 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;error non ValFun&quot;,</span>
+<span class="lineno">  147 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  148 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply, ValFun as second Exp&quot; $</span>
+<span class="lineno">  149 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Apply (CstInt <span class="nottickedoff">3</span>) <span class="nottickedoff">(Let &quot;x&quot; (CstInt 2) (Lambda &quot;y&quot; (Add (Var &quot;x&quot;) (Var &quot;y&quot;))))</span>) </span>
+<span class="lineno">  150 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;error non ValFun&quot;,</span>
+<span class="lineno">  151 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  152 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply, Both Lambda (ValFun) Inputs&quot; $</span>
+<span class="lineno">  153 </span><span class="spaces">        </span><span class="istickedoff">eval envEmpty (Apply (Lambda &quot;x&quot; (Add (Var &quot;x&quot;) (Var &quot;y&quot;))) (Lambda <span class="nottickedoff">&quot;y&quot;</span> <span class="nottickedoff">(Add (Var &quot;x&quot;) (Var &quot;y&quot;))</span>))</span>
+<span class="lineno">  154 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Unknown variable: y&quot;,</span>
+<span class="lineno">  155 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  156 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply error&quot; $</span>
+<span class="lineno">  157 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Apply (Lambda <span class="nottickedoff">&quot;x&quot;</span> <span class="nottickedoff">(Add (Var &quot;x&quot;) (Var &quot;y&quot;))</span>) (Div (CstInt <span class="nottickedoff">3</span>) (CstInt 0)))</span>
+<span class="lineno">  158 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">  159 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  160 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Apply error 2&quot; $</span>
+<span class="lineno">  161 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (Apply (Div (CstInt <span class="nottickedoff">3</span>) (CstInt 0)) <span class="nottickedoff">(Div (CstInt 3) (CstInt 0))</span>)</span>
+<span class="lineno">  162 </span><span class="spaces">          </span><span class="istickedoff">@?= Left &quot;Division by zero&quot;,</span>
+<span class="lineno">  163 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  164 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Try-Catch&quot; $</span>
+<span class="lineno">  165 </span><span class="spaces">        </span><span class="istickedoff">eval <span class="nottickedoff">envEmpty</span> (TryCatch (CstInt 0) <span class="nottickedoff">(CstInt 1)</span>)</span>
+<span class="lineno">  166 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 0),</span>
+<span class="lineno">  167 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  168 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Try-Catch Var Missing&quot; $</span>
+<span class="lineno">  169 </span><span class="spaces">        </span><span class="istickedoff">eval envEmpty (TryCatch (Var <span class="nottickedoff">&quot;missing&quot;</span>) (CstInt 1))</span>
+<span class="lineno">  170 </span><span class="spaces">          </span><span class="istickedoff">@?= Right (ValInt 1),</span>
+<span class="lineno">  171 </span><span class="spaces">      </span><span class="istickedoff">--</span>
+<span class="lineno">  172 </span><span class="spaces">      </span><span class="istickedoff">testCase &quot;Try-Catch e1/e2 Errors&quot; $</span>
+<span class="lineno">  173 </span><span class="spaces">        </span><span class="istickedoff">eval envEmpty (TryCatch (Var <span class="nottickedoff">&quot;missing&quot;</span>) (Var &quot;missing&quot;))</span>
+<span class="lineno">  174 </span><span class="spaces">        </span><span class="istickedoff">@?= Left &quot;Unknown variable: missing&quot;</span>
+<span class="lineno">  175 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">  176 </span><span class="spaces">    </span><span class="istickedoff">]</span></span>
+
+</pre>
+</body>
+</html>

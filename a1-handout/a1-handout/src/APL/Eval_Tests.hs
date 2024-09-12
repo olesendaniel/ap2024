@@ -4,7 +4,7 @@ import APL.AST (Exp (..))
 import APL.Eval (Val (..), envEmpty, eval)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
-import Data.Type.Equality (apply)
+--import Data.Type.Equality (apply)
 
 -- -- Consider this example when you have added the necessary constructors.
 -- -- The Y combinator in a form suitable for strict evaluation.
@@ -47,6 +47,10 @@ tests =
         eval envEmpty (Sub (CstInt 2) (CstInt 5))
           @?= Right (ValInt (-3)),
       --
+      testCase "Mul" $
+        eval envEmpty (Mul (CstInt 2) (CstInt 5))
+          @?= Right (ValInt 10),
+      --
       testCase "Div" $
         eval envEmpty (Div (CstInt 7) (CstInt 3))
           @?= Right (ValInt 2),
@@ -67,9 +71,25 @@ tests =
         eval envEmpty (Pow (CstInt 2) (CstInt (-1)))
           @?= Left "Negative exponent",
       --
+      testCase "Eql (right failure)" $
+        eval envEmpty (Eql (CstInt 2) (Div (CstInt 2) (CstInt 0)))
+          @?= Left "Division by zero",
+      --
+      testCase "Eql (left failure)" $
+        eval envEmpty (Eql (Div (CstInt 2) (CstInt 0)) (CstInt 3))
+          @?= Left "Division by zero",
+      --
       testCase "Eql (false)" $
         eval envEmpty (Eql (CstInt 2) (CstInt 3))
           @?= Right (ValBool False),
+      --
+      testCase "Eql (2 bools)" $
+        eval envEmpty (Eql (CstBool True) (CstBool True))
+          @?= Right (ValBool True),
+      --
+      testCase "Eql (int and bool)" $
+        eval envEmpty (Eql (CstInt 2) (CstBool True))
+          @?= Left "Invalid operands to equality",
       --
       testCase "Eql (true)" $
         eval envEmpty (Eql (CstInt 2) (CstInt 2))
@@ -78,6 +98,18 @@ tests =
       testCase "If" $
         eval envEmpty (If (CstBool True) (CstInt 2) (Div (CstInt 7) (CstInt 0)))
           @?= Right (ValInt 2),
+      --
+      testCase "If (false)" $
+        eval envEmpty (If (CstBool False) (CstInt 2) (Add (CstInt 7) (CstInt 1)))
+          @?= Right (ValInt 8),
+      --
+      testCase "If (non-boolean failure)" $
+        eval envEmpty (If (CstInt 2) (CstInt 2) (Div (CstInt 7) (CstInt 7)))
+          @?= Left "Non-boolean conditional.",
+      --
+      testCase "If failure" $
+        eval envEmpty (If (Div (CstInt 2) (CstInt 0)) (CstInt 2) (Div (CstInt 7) (CstInt 7)))
+          @?= Left "Division by zero",
       --
       testCase "Let" $
         eval envEmpty (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
@@ -92,6 +124,10 @@ tests =
               (Let "x" (CstBool True) (Var "x"))
           )
           @?= Right (ValBool True),
+      --
+      testCase "Let error" $
+        eval envEmpty (Let "x" (Div (CstInt 2) (CstInt 0)) (Var "x"))
+          @?= Left "Division by zero",
       --
       testCase "Lambda" $
         eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))
@@ -116,6 +152,14 @@ tests =
       testCase "Apply, Both Lambda (ValFun) Inputs" $
         eval envEmpty (Apply (Lambda "x" (Add (Var "x") (Var "y"))) (Lambda "y" (Add (Var "x") (Var "y"))))
           @?= Left "Unknown variable: y",
+      --
+      testCase "Apply error" $
+        eval envEmpty (Apply (Lambda "x" (Add (Var "x") (Var "y"))) (Div (CstInt 3) (CstInt 0)))
+          @?= Left "Division by zero",
+      --
+      testCase "Apply error 2" $
+        eval envEmpty (Apply (Div (CstInt 3) (CstInt 0)) (Div (CstInt 3) (CstInt 0)))
+          @?= Left "Division by zero",
       --
       testCase "Try-Catch" $
         eval envEmpty (TryCatch (CstInt 0) (CstInt 1))
