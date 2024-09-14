@@ -172,5 +172,9 @@ tests =
       testCase "Try-Catch e1/e2 Errors" $
         eval envEmpty (TryCatch (Var "missing") (Var "missing"))
         @?= Left "Unknown variable: missing"
+      ----
+      --testCase "Infinite loop" $
+      --  eval envEmpty (Let "infinite" (Lambda "f" (Apply (Var "f") (Var "f"))) (Apply (Var "infinite") (Var "infinite")))
+      --  @?= Left "Will never reach"
 
     ]
