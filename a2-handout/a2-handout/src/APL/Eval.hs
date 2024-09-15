@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module APL.Eval
   ( Val (..),
     eval,
@@ -28,42 +29,47 @@ envLookup v env = lookup v env
 
 type Error = String
 
-newtype EvalM a = EvalM (Env -> Either Error a)
+newtype EvalM a s = EvalM (Env -> s -> ([String], Either Error a))
 
-instance Functor EvalM where
+--newtype State s a = State (s -> (a, s))
+--newtype Reader env a = Reader (env -> a)
+--newtype RS env s a = RS (env -> s -> (a, s))
+instance Functor (EvalM s) where
   fmap = liftM
 
-instance Applicative EvalM where
-  pure x = EvalM $ \_env -> Right x
+instance Applicative (EvalM s) where
+  pure x = EvalM $ \_env -> (["Temp"], Right x)
+  (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b 
   (<*>) = ap
 
-instance Monad EvalM where
+instance Monad (EvalM s) where
   EvalM x >>= f = EvalM $ \env ->
     case x env of
-      Left err -> Left err
-      Right x' ->
-        let EvalM y = f x'
-         in y env
+      (s, Left err) -> (s, Left err)
+      (s, Right x') ->
+        let EvalM y = f x'    
+         in y env 
 
-askEnv :: EvalM Env
+askEnv :: (EvalM s) Env
 askEnv = EvalM $ \env -> Right env
 
-localEnv :: (Env -> Env) -> EvalM a -> EvalM a
+localEnv :: (Env -> Env) -> (EvalM s) a -> (EvalM s) a
 localEnv f (EvalM m) = EvalM $ \env -> m (f env)
 
-failure :: String -> EvalM a
+failure :: String -> (EvalM s) a
 failure s = EvalM $ \_env -> Left s
 
-catch :: EvalM a -> EvalM a -> EvalM a
+catch :: (EvalM s) a -> (EvalM s) a -> (EvalM s) a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
   case m1 env of
     Left _ -> m2 env
     Right x -> Right x
 
-runEval :: EvalM a -> Either Error a
+runEval :: (EvalM s) a -> ([String], Either Error a)
+--runEval :: EvalM a -> Either Error a
 runEval (EvalM m) = m envEmpty
 
-evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
+evalIntBinOp :: (Integer -> Integer -> (EvalM s) Integer) -> Exp -> Exp -> (EvalM s) Val
 evalIntBinOp f e1 e2 = do
   v1 <- eval e1
   v2 <- eval e2
@@ -71,13 +77,13 @@ evalIntBinOp f e1 e2 = do
     (ValInt x, ValInt y) -> ValInt <$> f x y
     (_, _) -> failure "Non-integer operand"
 
-evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> EvalM Val
+evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> (EvalM s) Val
 evalIntBinOp' f e1 e2 =
   evalIntBinOp f' e1 e2
   where
     f' x y = pure $ f x y
 
-eval :: Exp -> EvalM Val
+eval :: Exp -> (EvalM s) Val
 eval (CstInt x) = pure $ ValInt x
 eval (CstBool b) = pure $ ValBool b
 eval (Var v) = do
