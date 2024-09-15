@@ -38,7 +38,7 @@ tests =
       --
       testCase "Pow negative" $
         printExp (Pow (CstInt 2) (CstInt (-1)))
-          @?= "(2**-1)",
+          @?= "(2**(-1))",
       --
       testCase "If" $
         printExp (If (CstBool True) (CstInt 2) (Div (CstInt 7) (CstInt 0)))
@@ -86,6 +86,10 @@ tests =
       --
       testCase "Apply" $
         printExp (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3))
-        @?= "(Let x=2 in (\\y->(x+y))) 3"
+        @?= "(Let x=2 in (\\y->(x+y))) 3",
+      --
+      testCase "Negatives" $
+        printExp (Add (CstInt 3) (CstInt (-2)))
+        @?= "(3+(-2))"
           ]
 

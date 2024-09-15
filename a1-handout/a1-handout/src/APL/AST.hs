@@ -25,7 +25,7 @@ data Exp
   deriving (Eq, Show)
 
 printExp :: Exp -> String
-printExp (CstInt i) = show i 
+printExp (CstInt i) = if i < 0 then "(" ++ show i ++ ")" else show i 
 printExp (CstBool i) = show i
 printExp (Var name) = name
 printExp (Add e1 e2) = "(" ++ printExp e1 ++ "+" ++ printExp e2 ++ ")"
