@@ -29,47 +29,55 @@ envLookup v env = lookup v env
 
 type Error = String
 
-newtype EvalM a s = EvalM (Env -> s -> ([String], Either Error a))
+--got rid of s in EvalM a s
+--replaced s with [String] in EvalM (Env -> ([String], Either Error a)) 
+newtype EvalM a = EvalM (Env -> [String] -> ([String], Either Error a))
 
 --newtype State s a = State (s -> (a, s))
 --newtype Reader env a = Reader (env -> a)
 --newtype RS env s a = RS (env -> s -> (a, s))
-instance Functor (EvalM s) where
+instance Functor EvalM where
   fmap = liftM
 
-instance Applicative (EvalM s) where
-  pure x = EvalM $ \_env -> (["Temp"], Right x)
+instance Applicative EvalM where
+  --all we need to do is add s into our EvalM env s to produce ([String], Either Error a)
+  pure x = EvalM $ \_env s -> (s, Right x)
   (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b 
   (<*>) = ap
 
-instance Monad (EvalM s) where
-  EvalM x >>= f = EvalM $ \env ->
-    case x env of
-      (s, Left err) -> (s, Left err)
-      (s, Right x') ->
-        let EvalM y = f x'    
-         in y env 
+instance Monad EvalM where
+  EvalM x >>= f = EvalM $ \env s ->
+    case x env s of
+      --s' is our updated state
+      (s', Left err) -> (s', Left err)
+      (s', Right x') ->
+        let EvalM y = f x'   
+        --we need to make sure to return our updated y, our env (unchanged bc of read), and our modified state (s') 
+         in y env s'
 
-askEnv :: (EvalM s) Env
-askEnv = EvalM $ \env -> Right env
 
-localEnv :: (Env -> Env) -> (EvalM s) a -> (EvalM s) a
+--now we need to modify these functions to handle the new type to handle the state [String]
+--changes applied to askEnv, failure, and catch functions below, all following similar change of code
+askEnv :: EvalM Env
+askEnv = EvalM $ \env s -> (s, Right env)
+
+localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f (EvalM m) = EvalM $ \env -> m (f env)
 
-failure :: String -> (EvalM s) a
-failure s = EvalM $ \_env -> Left s
+failure :: String -> EvalM a
+failure s = EvalM $ \_env st -> (st, Left s)
 
-catch :: (EvalM s) a -> (EvalM s) a -> (EvalM s) a
-catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
-  case m1 env of
-    Left _ -> m2 env
-    Right x -> Right x
+catch :: EvalM a -> EvalM a -> EvalM a
+catch (EvalM m1) (EvalM m2) = EvalM $ \env s ->
+  case m1 env s of
+    (s', Left _) -> m2 env s'
+    (s', Right x) -> (s', Right x)
 
-runEval :: (EvalM s) a -> ([String], Either Error a)
+runEval :: EvalM a -> ([String], Either Error a)
 --runEval :: EvalM a -> Either Error a
-runEval (EvalM m) = m envEmpty
+runEval (EvalM m) = undefined
 
-evalIntBinOp :: (Integer -> Integer -> (EvalM s) Integer) -> Exp -> Exp -> (EvalM s) Val
+evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
   v1 <- eval e1
   v2 <- eval e2
@@ -77,13 +85,13 @@ evalIntBinOp f e1 e2 = do
     (ValInt x, ValInt y) -> ValInt <$> f x y
     (_, _) -> failure "Non-integer operand"
 
-evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> (EvalM s) Val
+evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp' f e1 e2 =
   evalIntBinOp f' e1 e2
   where
     f' x y = pure $ f x y
 
-eval :: Exp -> (EvalM s) Val
+eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
 eval (CstBool b) = pure $ ValBool b
 eval (Var v) = do
