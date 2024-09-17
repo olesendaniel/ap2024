@@ -134,8 +134,8 @@ evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
   case keyValueLookup v1 y of 
     Left _ -> ((x, y ++ [(v1, v2)]), Right ())
-    Right v -> 
-      let newY = keyValueRemove v y
+    Right _ -> 
+      let newY = keyValueRemove v1 y
       in ((x, newY ++ [(v1, v2)]), Right ())
 
   
