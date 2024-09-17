@@ -120,11 +120,27 @@ get :: State s s
 get = State $ \s -> (s, s)
 -}
 
+keyValueRemove :: Val -> [(Val, Val)] -> [(Val, Val)]
+keyValueRemove _ [] = []
+keyValueRemove v (c:cs) = 
+  case c of 
+  (x,_) -> 
+    if v == x 
+      then cs
+        else c : keyValueRemove v cs
 
 -- (([String], [(Val,Val)]), Either Error a))
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
-  ((x, y ++ [(v1, v2)]), Right ())
+  case keyValueLookup v1 y of 
+    Left _ -> ((x, y ++ [(v1, v2)]), Right ())
+    Right v -> 
+      let newY = keyValueRemove v y
+      in ((x, newY ++ [(v1, v2)]), Right ())
+
+  
+  
+  
 {-
 put :: s -> State s ()
 put s = State $ \_ -> ((), s)

@@ -112,7 +112,13 @@ evalMonad =
       testCase "evalKvGet" $
         runEval
           (eval $ Let "x" (KvPut (CstInt 0) (CstBool True))(KvGet (CstInt 0)))
-          @?= ([],Right (ValBool True))
+          @?= ([],Right (ValBool True)),
+      --
+      testCase "KvPutOverride" $
+        runEval
+          (eval $ Let "X" (Let "y" (KvPut (CstInt 0) (CstInt 1)) (KvPut (CstInt 0) (CstInt 2))) (KvGet (CstInt 0)))
+
+          @?= ([],Right (ValInt 2))
 
 
 
