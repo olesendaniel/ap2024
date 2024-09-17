@@ -4,14 +4,14 @@ import APL.AST (Exp (..))
 import APL.Eval (Error, Val (..), eval, runEval)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
-
-eval' :: Exp -> Either Error Val
+{-
+eval' :: Exp -> (([String], [(Val,Val)]), Either Error a)
 eval' = runEval . eval
 
 evalTests :: TestTree
 evalTests =
   testGroup
-    "EValuation"
+    "Evaluation"
     [ testCase "Add" $
         eval' (Add (CstInt 2) (CstInt 5))
           @?= Right (ValInt 7),
@@ -78,7 +78,46 @@ evalTests =
         eval'
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
           @?= Right (ValBool True)
+    ]-}
+evalMonad :: TestTree
+evalMonad =
+  testGroup
+    "Evaluation" 
+    [
+      testCase "runEval Simple" $ 
+        runEval 
+          (eval $ Print "foo" $ CstInt 2)
+          @?= (["foo: 2"],Right (ValInt 2)),
+      --
+      testCase "runEval Simple" $ 
+        runEval 
+          (eval $ Print "foo" $ CstBool True )
+          @?= (["foo: True"] ,Right (ValBool True)),
+      --
+      testCase "runEval Let" $
+        runEval
+          (eval $ Let "x" (Print "foo" $ CstInt 2) (Print "bar" $ CstInt 3))
+          @?= (["foo: 2","bar: 3"],Right (ValInt 3)),
+      --
+      testCase "runEval function" $
+        runEval 
+          (eval $ Print "foo" $ Lambda "x" (Var "x"))
+          @?= (["foo: #<fun>"],Right (ValFun [] "x" (Var "x"))),
+      --
+      testCase "runEval Error" $
+        runEval
+          (eval $ Let "x" (Print "foo" $ CstInt 2) (Var "bar"))
+          @?= (["foo: 2"],Left "Unknown variable: bar"),
+      --
+      testCase "evalKvGet" $
+        runEval
+          (eval $ Let "x" (KvPut (CstInt 0) (CstBool True))(KvGet (CstInt 0)))
+          @?= ([],Right (ValBool True))
+
+
+
+      
     ]
 
 tests :: TestTree
-tests = testGroup "APL" [evalTests]
+tests = testGroup "APL" [evalMonad]

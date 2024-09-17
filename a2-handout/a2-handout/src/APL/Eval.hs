@@ -31,7 +31,8 @@ type Error = String
 
 --got rid of s in EvalM a s
 --replaced s with [String] in EvalM (Env -> ([String], Either Error a)) 
-newtype EvalM a = EvalM (Env -> [String] -> ([String], Either Error a))
+newtype EvalM a = EvalM (Env -> ([String], [(Val,Val)]) -> (([String], [(Val,Val)]), Either Error a))
+--newtype EvalM a = EvalM (Env -> [String] -> ([String], Either Error a))
 
 --newtype State s a = State (s -> (a, s))
 --newtype Reader env a = Reader (env -> a)
@@ -73,9 +74,18 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env s ->
     (s', Left _) -> m2 env s'
     (s', Right x) -> (s', Right x)
 
+--runEval :: EvalM a -> (([String], [(Val,Val)]), Either Error a)
 runEval :: EvalM a -> ([String], Either Error a)
 --runEval :: EvalM a -> Either Error a
-runEval (EvalM m) = undefined
+runEval (EvalM m) = 
+  case m envEmpty ([], []) of 
+    ((s',_), Left err) -> (s', Left err)
+    ((s',_), Right a) -> (s', Right a)
+    --([String], Either Error a)
+
+evalPrint :: String -> EvalM ()
+evalPrint s = EvalM $ \_env (st, x) -> 
+  ((st ++ [s], x), Right ())
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -90,6 +100,35 @@ evalIntBinOp' f e1 e2 =
   evalIntBinOp f' e1 e2
   where
     f' x y = pure $ f x y
+
+keyValueLookup :: Val -> [(Val, Val)] -> Either Error Val
+keyValueLookup _ [] = Left "Key invalid"
+keyValueLookup v (c:cs) = 
+  case c of 
+  (x,y) -> 
+    if v == x 
+      then Right y 
+        else keyValueLookup v cs
+
+evalKvGet :: Val -> EvalM Val
+evalKvGet v = EvalM $ \_env (x, y) ->
+  case keyValueLookup v y of
+    v' -> ((x,y), v') 
+    
+{-
+get :: State s s
+get = State $ \s -> (s, s)
+-}
+
+
+-- (([String], [(Val,Val)]), Either Error a))
+evalKvPut :: Val -> Val -> EvalM ()
+evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
+  ((x, y ++ [(v1, v2)]), Right ())
+{-
+put :: s -> State s ()
+put s = State $ \_ -> ((), s)
+-}
 
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
@@ -141,3 +180,23 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
+eval (Print s e) = 
+  case e of 
+    (CstInt v) -> do
+      evalPrint (s ++ ": " ++ show v) 
+      pure (ValInt v)
+    (CstBool v) -> do
+      evalPrint (s ++ ": " ++ show v) 
+      pure (ValBool v)
+    _ -> do
+      evalPrint (s ++ ": #<fun>") 
+      eval e
+eval (KvPut e1 e2) = do
+  v1 <- eval e1
+  v2 <- eval e2
+  evalKvPut v1 v2
+  pure v2    
+eval (KvGet e) = do
+  v1 <- eval e
+  evalKvGet v1
+  
