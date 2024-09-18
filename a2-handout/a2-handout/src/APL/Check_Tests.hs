@@ -23,4 +23,12 @@ tests :: TestTree
 tests =
   testGroup
     "Checking"
-    []
+    [
+      testCase "test1" $
+        checkExp (CstInt 2)
+        @?= Nothing,
+      --
+      testCase "Fail" $
+        checkExp (Var "x")
+        @?= Just "Unknown variable: x"
+    ]

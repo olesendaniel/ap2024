@@ -4,6 +4,9 @@ module APL.Eval
     eval,
     runEval,
     Error,
+    Env,
+    EvalM (..),
+    envEmpty
   )
 where
 
