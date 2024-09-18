@@ -102,7 +102,7 @@ evalIntBinOp' f e1 e2 =
     f' x y = pure $ f x y
 
 keyValueLookup :: Val -> [(Val, Val)] -> Either Error Val
-keyValueLookup _ [] = Left "Key invalid"
+keyValueLookup v [] = Left ("Key invalid: " ++ show v)
 keyValueLookup v (c:cs) = 
   case c of 
   (x,y) -> 

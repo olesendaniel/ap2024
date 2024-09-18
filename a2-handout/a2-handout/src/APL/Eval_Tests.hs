@@ -118,7 +118,12 @@ evalMonad =
         runEval
           (eval $ Let "X" (Let "y" (KvPut (CstInt 0) (CstInt 1)) (KvPut (CstInt 0) (CstInt 2))) (KvGet (CstInt 0)))
 
-          @?= ([],Right (ValInt 2))
+          @?= ([],Right (ValInt 2)),
+      --
+      testCase "evalKvGet invalid key" $
+        runEval
+          (eval $ KvGet (CstInt 0))
+          @?= ([],Left "Key invalid: ValInt 0")
 
 
 
