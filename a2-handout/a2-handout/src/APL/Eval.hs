@@ -6,7 +6,8 @@ module APL.Eval
     Error,
     Env,
     EvalM (..),
-    envEmpty
+    envEmpty,
+    askEnv
   )
 where
 
