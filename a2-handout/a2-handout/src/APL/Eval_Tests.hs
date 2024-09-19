@@ -6,7 +6,7 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 {-
 eval' :: Exp -> (([String], [(Val,Val)]), Either Error a)
-eval' = runEval . eval
+eval' = runEval . evalc
 
 evalTests :: TestTree
 evalTests =
