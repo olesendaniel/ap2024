@@ -90,6 +90,10 @@ tests =
       --
       testCase "Negatives" $
         printExp (Add (CstInt 3) (CstInt (-2)))
-        @?= "(3+(-2))"
+        @?= "(3+(-2))",
+      --
+      testCase "Apply like in feedback" $
+        printExp (Apply (Let "x" (CstInt 4) (Var "f")) (Var "x"))
+        @?= "(Let x=4 in f) x"
           ]
 
