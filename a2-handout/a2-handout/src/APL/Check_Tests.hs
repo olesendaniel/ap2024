@@ -30,5 +30,35 @@ tests =
       --
       testCase "Fail" $
         checkExp (Var "x")
-        @?= Just "Unknown variable: x"
+        @?= Just "Unknown variable: x",
+      --
+      testCase "Lambda" $
+        checkExp (Lambda "x" (Var "x"))
+        @?= Nothing,
+      --
+      testCase "Lambda Fail" $
+        checkExp (Lambda "x" (Var "y"))
+        @?= Just "Unknown variable: y",
+      --
+      testCase "Lambda Simple" $
+        checkExp (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))
+        @?= Nothing,
+      --
+      testCase "Lambda Simple 2" $
+        checkExp (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (CstInt 2))))
+        @?= Nothing,
+      --
+      testCase "Let" $
+        checkExp (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
+        @?= Nothing,
+      --
+      testCase "Let 2" $
+        checkExp (Let "x" (Add (CstInt 2) (CstInt 3))  (Add (CstInt 3) (Var "x")))
+        @?= Nothing,
+      --
+      testCase "Let 3" $
+        checkExp (Let "x" (Add (CstInt 2) (CstInt 3))  (Let "y" (Add (CstInt 4) (Var "x")) (Var "y")))
+        @?= Nothing
+
+        
     ]

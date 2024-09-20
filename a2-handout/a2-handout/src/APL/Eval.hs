@@ -7,7 +7,8 @@ module APL.Eval
     Env,
     EvalM (..),
     envEmpty,
-    askEnv
+    askEnv,
+    envExtend,
   )
 where
 
