@@ -34,19 +34,12 @@ envLookup v env = lookup v env
 
 type Error = String
 
---got rid of s in EvalM a s
---replaced s with [String] in EvalM (Env -> ([String], Either Error a)) 
 newtype EvalM a = EvalM (Env -> ([String], [(Val,Val)]) -> (([String], [(Val,Val)]), Either Error a))
---newtype EvalM a = EvalM (Env -> [String] -> ([String], Either Error a))
 
---newtype State s a = State (s -> (a, s))
---newtype Reader env a = Reader (env -> a)
---newtype RS env s a = RS (env -> s -> (a, s))
 instance Functor EvalM where
   fmap = liftM
 
 instance Applicative EvalM where
-  --all we need to do is add s into our EvalM env s to produce ([String], Either Error a)
   pure x = EvalM $ \_env s -> (s, Right x)
   (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b 
   (<*>) = ap
@@ -54,16 +47,12 @@ instance Applicative EvalM where
 instance Monad EvalM where
   EvalM x >>= f = EvalM $ \env s ->
     case x env s of
-      --s' is our updated state
       (s', Left err) -> (s', Left err)
       (s', Right x') ->
         let EvalM y = f x'   
-        --we need to make sure to return our updated y, our env (unchanged bc of read), and our modified state (s') 
          in y env s'
 
 
---now we need to modify these functions to handle the new type to handle the state [String]
---changes applied to askEnv, failure, and catch functions below, all following similar change of code
 askEnv :: EvalM Env
 askEnv = EvalM $ \env s -> (s, Right env)
 
@@ -79,14 +68,11 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env s ->
     (s', Left _) -> m2 env s'
     (s', Right x) -> (s', Right x)
 
---runEval :: EvalM a -> (([String], [(Val,Val)]), Either Error a)
 runEval :: EvalM a -> ([String], Either Error a)
---runEval :: EvalM a -> Either Error a
 runEval (EvalM m) = 
   case m envEmpty ([], []) of 
     ((s',_), Left err) -> (s', Left err)
     ((s',_), Right a) -> (s', Right a)
-    --([String], Either Error a)
 
 evalPrint :: String -> EvalM ()
 evalPrint s = EvalM $ \_env (st, x) -> 
@@ -119,11 +105,6 @@ evalKvGet :: Val -> EvalM Val
 evalKvGet v = EvalM $ \_env (x, y) ->
   case keyValueLookup v y of
     v' -> ((x,y), v') 
-    
-{-
-get :: State s s
-get = State $ \s -> (s, s)
--}
 
 keyValueRemove :: Val -> [(Val, Val)] -> [(Val, Val)]
 keyValueRemove _ [] = []
@@ -134,7 +115,6 @@ keyValueRemove v (c:cs) =
       then cs
         else c : keyValueRemove v cs
 
--- (([String], [(Val,Val)]), Either Error a))
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
   case keyValueLookup v1 y of 
@@ -142,14 +122,6 @@ evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
     Right _ -> 
       let newY = keyValueRemove v1 y
       in ((x, newY ++ [(v1, v2)]), Right ())
-
-  
-  
-  
-{-
-put :: s -> State s ()
-put s = State $ \_ -> ((), s)
--}
 
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x

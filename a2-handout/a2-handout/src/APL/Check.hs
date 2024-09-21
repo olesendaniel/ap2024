@@ -10,7 +10,6 @@ import Test.Tasty.Runners (Outcome(Failure))
 
 type Error = String
 
---Error synonymous with String
 newtype CheckM a = CheckM (Env -> Either Error a)
 
 instance Functor CheckM where
