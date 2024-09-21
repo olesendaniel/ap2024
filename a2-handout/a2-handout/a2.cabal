@@ -11,22 +11,22 @@ library
     import: common
     hs-source-dirs: src
     build-depends:
-        base
+        base >= 4.14 && < 5
       , tasty
       , tasty-hunit
     exposed-modules:
         APL.AST
         APL.Check
-        APL.Check_Tests
         APL.Eval
-        APL.Eval_Tests
+    -- Do not expose the test modules
 
 test-suite a2-test
     import: common
     type: exitcode-stdio-1.0
     main-is: runtests.hs
+    hs-source-dirs: src  -- Adjust if you have a `tests` folder for test files
     build-depends:
         base
       , tasty
-      , a2
-
+      , tasty-hunit
+      , a2 -- This allows the test suite to access the library modules
