@@ -79,7 +79,28 @@ oldEvalTests =
       testCase "TryCatch" $
         eval'
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
-          @?= Right (ValBool True)
+          @?= Right (ValBool True),
+      --
+      testCase "Eql bool int" $
+        eval'
+          (Eql (CstBool True) (CstInt 3))
+          @?= Left "Invalid operands to equality",
+      --
+      testCase "Apply non function" $
+        eval'
+          (Apply (CstBool True) (CstInt 3))
+          @?= Left "Cannot apply non-function",
+      --
+      testCase "If without Bool" $
+        eval'
+          (If (CstInt 0) (CstInt 0) (CstInt 0))
+          @?= Left "Non-boolean conditional.",
+      --
+      testCase "false" $
+        eval'
+          (If (CstBool False) (CstInt 1) (CstInt 0))
+          @?= Right (ValInt 0)
+
     ]
 evalMonad :: TestTree
 evalMonad =

@@ -79,5 +79,14 @@ tests =
       testPos (Apply (KvPut (CstInt 0)(CstInt 10))(KvGet (CstInt 0))),
 
       -- Test kvGet (should fail)
-      testNeg (KvGet (CstInt 0))
+      testNeg (KvGet (CstInt 0)),
+
+      -- Test print
+      testPos (Print "Test" (CstInt 3)),
+
+      -- TryCatch e1 saves a var, then fails and e2 tries to use that var
+      testNeg (TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Pow (Var "x") (CstInt 3))),
+
+      --Testing that catch works even with invalid expressions
+      testPos (Mul (CstInt 3) (CstBool True))
     ]
