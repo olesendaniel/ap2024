@@ -99,7 +99,17 @@ oldEvalTests =
       testCase "false" $
         eval'
           (If (CstBool False) (CstInt 1) (CstInt 0))
-          @?= Right (ValInt 0)
+          @?= Right (ValInt 0),
+      --
+      testCase "kvPut another test" $
+        eval'
+          (Let "x" (KvPut (CstInt 10) (CstBool True))(KvGet (CstInt 1)))
+          @?= Left "Key invalid: ValInt 1",
+      --
+      testCase "kvPut override else part" $
+        eval'
+          (Let "x" (Let "y" (KvPut (CstInt 10) (CstBool True))(KvPut (CstInt 11) (CstBool True)))(KvPut (CstInt 11) (CstBool False)))
+          @?= Right (ValBool False)
 
     ]
 evalMonad :: TestTree
@@ -155,13 +165,27 @@ evalMonad =
       --
       testCase "TryCatch e1 saves var and fails" $
         runEval
-          (eval $ TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))
-          @?= ([],Right (ValInt 11)),
+          (eval $ TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10)) (Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))
+          @?= ([],Left "Unknown variable: x"),
       --
-      testCase "TryCatch e1 has kvput and fails 2" $
+      testCase "TryCatch e1 has kvput and fails" $
         runEval
-          (eval $ TryCatch (Apply (KvPut (CstInt 0) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (KvGet (CstInt 0)) (CstInt 1)))
-          @?= ([],Right (ValInt 11))
+          (eval $ TryCatch (Apply (KvPut (CstInt 0) (CstInt 10)) (Div (CstInt 3) (CstInt 0))) (Add (KvGet (CstInt 0)) (CstInt 1)))
+          @?= ([],Left "Key invalid: ValInt 0"),
+      --
+      testCase "TryCatch e1 lambda fail" $
+        runEval
+          (eval $ TryCatch (Apply (Lambda "x" (CstInt 10))(Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))
+          @?= ([],Left "Unknown variable: x"),
+      --
+      testCase "Trycatch print in e1" $
+        runEval
+          (eval $ TryCatch (Apply (Print "Var in e1" (CstInt 2))(Div (CstInt 3) (CstInt 0))) (Add (CstInt 1) (CstInt 1)))
+          @?= ([],Right (ValInt 2))
+
+
+
+
 
 
 

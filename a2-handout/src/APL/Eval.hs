@@ -45,6 +45,7 @@ instance Applicative EvalM where
   (<*>) = ap
 
 instance Monad EvalM where
+  (>>=) :: EvalM a -> (a -> EvalM b) -> EvalM b
   EvalM x >>= f = EvalM $ \env s ->
     case x env s of
       (s', Left err) -> (s', Left err)
@@ -65,7 +66,7 @@ failure s = EvalM $ \_env st -> (st, Left s)
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env s ->
   case m1 env s of
-    (s', Left _) -> m2 env s'
+    (_, Left _) -> m2 env s
     (s', Right x) -> (s', Right x)
 
 runEval :: EvalM a -> ([String], Either Error a)

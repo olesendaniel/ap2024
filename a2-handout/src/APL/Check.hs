@@ -3,10 +3,7 @@ module APL.Check (checkExp, Error) where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
-import APL.Eval (Env, eval, EvalM (..), runEval, Val (..), envEmpty, envExtend)
-import Foreign.C (errnoToIOError)
-import Data.Functor.Classes (eq1)
-import Test.Tasty.Runners (Outcome(Failure))
+import APL.Eval (Env, Val (..), envEmpty, envExtend)
 
 type Error = String
 
