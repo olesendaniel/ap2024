@@ -79,7 +79,7 @@ tests =
       testPos (Apply (KvPut (CstInt 0)(CstInt 10))(KvGet (CstInt 0))),
 
       -- Test kvGet (should fail)
-      testNeg (KvGet (CstInt 0)),
+      testPos (KvGet (CstInt 0)),
 
       -- Test print
       testPos (Print "Test" (CstInt 3)),
