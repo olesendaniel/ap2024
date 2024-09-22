@@ -94,26 +94,20 @@ evalIntBinOp' f e1 e2 =
 
 keyValueLookup :: Val -> [(Val, Val)] -> Either Error Val
 keyValueLookup v [] = Left ("Key invalid: " ++ show v)
-keyValueLookup v (c:cs) =
-  case c of
-  (x,y) ->
-    if v == x
-      then Right y
-        else keyValueLookup v cs
+keyValueLookup v (c:cs) = if v == fst c
+  then Right $ snd c
+  else keyValueLookup v cs
 
 evalKvGet :: Val -> EvalM Val
 evalKvGet v = EvalM $ \_env (x, y) ->
-  case keyValueLookup v y of
+  case keyValueLookup v  y of
     v' -> ((x,y), v')
 
 keyValueRemove :: Val -> [(Val, Val)] -> [(Val, Val)]
 keyValueRemove _ [] = []
-keyValueRemove v (c:cs) =
-  case c of
-  (x,_) ->
-    if v == x
-      then cs
-        else c : keyValueRemove v cs
+keyValueRemove v (c:cs) = if v == fst c
+  then cs
+  else c : keyValueRemove v cs
 
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
