@@ -41,7 +41,7 @@ instance Functor EvalM where
 
 instance Applicative EvalM where
   pure x = EvalM $ \_env s -> (s, Right x)
-  (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b 
+  (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b
   (<*>) = ap
 
 instance Monad EvalM where
@@ -49,7 +49,7 @@ instance Monad EvalM where
     case x env s of
       (s', Left err) -> (s', Left err)
       (s', Right x') ->
-        let EvalM y = f x'   
+        let EvalM y = f x'
          in y env s'
 
 
@@ -69,13 +69,13 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env s ->
     (s', Right x) -> (s', Right x)
 
 runEval :: EvalM a -> ([String], Either Error a)
-runEval (EvalM m) = 
-  case m envEmpty ([], []) of 
+runEval (EvalM m) =
+  case m envEmpty ([], []) of
     ((s',_), Left err) -> (s', Left err)
     ((s',_), Right a) -> (s', Right a)
 
 evalPrint :: String -> EvalM ()
-evalPrint s = EvalM $ \_env (st, x) -> 
+evalPrint s = EvalM $ \_env (st, x) ->
   ((st ++ [s], x), Right ())
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
@@ -94,32 +94,32 @@ evalIntBinOp' f e1 e2 =
 
 keyValueLookup :: Val -> [(Val, Val)] -> Either Error Val
 keyValueLookup v [] = Left ("Key invalid: " ++ show v)
-keyValueLookup v (c:cs) = 
-  case c of 
-  (x,y) -> 
-    if v == x 
-      then Right y 
+keyValueLookup v (c:cs) =
+  case c of
+  (x,y) ->
+    if v == x
+      then Right y
         else keyValueLookup v cs
 
 evalKvGet :: Val -> EvalM Val
 evalKvGet v = EvalM $ \_env (x, y) ->
   case keyValueLookup v y of
-    v' -> ((x,y), v') 
+    v' -> ((x,y), v')
 
 keyValueRemove :: Val -> [(Val, Val)] -> [(Val, Val)]
 keyValueRemove _ [] = []
-keyValueRemove v (c:cs) = 
-  case c of 
-  (x,_) -> 
-    if v == x 
+keyValueRemove v (c:cs) =
+  case c of
+  (x,_) ->
+    if v == x
       then cs
         else c : keyValueRemove v cs
 
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut v1 v2 = EvalM $ \_env (x, y) ->
-  case keyValueLookup v1 y of 
+  case keyValueLookup v1 y of
     Left _ -> ((x, y ++ [(v1, v2)]), Right ())
-    Right _ -> 
+    Right _ ->
       let newY = keyValueRemove v1 y
       in ((x, newY ++ [(v1, v2)]), Right ())
 
@@ -173,23 +173,23 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
-eval (Print s e) = 
-  case e of 
+eval (Print s e) =
+  case e of
     (CstInt v) -> do
-      evalPrint (s ++ ": " ++ show v) 
+      evalPrint (s ++ ": " ++ show v)
       pure (ValInt v)
     (CstBool v) -> do
-      evalPrint (s ++ ": " ++ show v) 
+      evalPrint (s ++ ": " ++ show v)
       pure (ValBool v)
     _ -> do
-      evalPrint (s ++ ": #<fun>") 
+      evalPrint (s ++ ": #<fun>")
       eval e
 eval (KvPut e1 e2) = do
   v1 <- eval e1
   v2 <- eval e2
   evalKvPut v1 v2
-  pure v2    
+  pure v2
 eval (KvGet e) = do
   v1 <- eval e
   evalKvGet v1
-  
+

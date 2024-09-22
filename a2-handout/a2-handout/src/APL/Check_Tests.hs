@@ -24,41 +24,48 @@ tests =
   testGroup
     "Checking"
     [
-      testCase "test1" $
-        checkExp (CstInt 2)
-        @?= Nothing,
-      --
-      testCase "Fail" $
-        checkExp (Var "x")
-        @?= Just "Unknown variable: x",
-      --
-      testCase "Lambda" $
-        checkExp (Lambda "x" (Var "x"))
-        @?= Nothing,
-      --
-      testCase "Lambda Fail" $
-        checkExp (Lambda "x" (Var "y"))
-        @?= Just "Unknown variable: y",
-      --
-      testCase "Lambda Simple" $
-        checkExp (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))
-        @?= Nothing,
-      --
-      testCase "Lambda Simple 2" $
-        checkExp (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (CstInt 2))))
-        @?= Nothing,
-      --
-      testCase "Let" $
-        checkExp (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
-        @?= Nothing,
-      --
-      testCase "Let 2" $
-        checkExp (Let "x" (Add (CstInt 2) (CstInt 3))  (Add (CstInt 3) (Var "x")))
-        @?= Nothing,
-      --
-      testCase "Let 3" $
-        checkExp (Let "x" (Add (CstInt 2) (CstInt 3))  (Let "y" (Add (CstInt 4) (Var "x")) (Var "y")))
-        @?= Nothing
+      -- Test case: Checking a constant integer (should pass)
+      testPos (CstInt 2),
 
-        
+      -- Test case: Using an undefined variable (should fail)
+      testNeg (Var "x"),
+
+      -- Test case: Lambda function with a bound variable (should pass)
+      testPos (Lambda "x" (Var "x")),
+
+      -- Test case: Lambda function with an unbound variable (should fail)
+      testNeg (Lambda "x" (Var "y")),
+
+      -- Test case: Let expression with a Lambda using an outer variable (should pass)
+      testPos (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))),
+
+      -- Test case: Let expression defining a variable and using it (should pass)
+      testPos (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x")),
+
+      -- Test case: Nested Let expressions (should pass)
+      testPos (Let "x" (Add (CstInt 2) (CstInt 3)) (Let "y" (Add (CstInt 4) (Var "x")) (Var "y"))),
+
+      -- Test case: Let expression with variable shadowing (should pass)
+      testPos (Let "x" (CstInt 2) (Let "x" (CstInt 3) (Var "x"))),
+
+      -- Test case: Nested Let expression with multiple variables (should pass)
+      testPos (Let "x" (CstInt 1) (Let "y" (CstInt 2) (Add (Var "x") (Var "y")))),
+
+      -- Test case: Adding an undefined variable to an integer (should fail)
+      testNeg (Add (Var "x") (CstInt 3)),
+
+      -- Test case: Lambda shadowing an outer variable (should pass)
+      testPos (Let "x" (CstInt 2) (Lambda "x" (Add (Var "x") (CstInt 3)))),
+
+      -- Test case: Lambda with an undefined variable (should fail)
+      testNeg (Lambda "x" (Add (Var "x") (Var "y"))),
+
+      -- Test case: Applying a lambda to an integer (should pass)
+      testPos (Apply (Lambda "x" (Add (Var "x") (CstInt 3))) (CstInt 5)),
+
+      -- Test case: Nested Let bindings with multiple variables (should pass)
+      testPos (Let "x" (CstInt 1) (Let "y" (CstInt 2) (Let "z" (Add (Var "x") (Var "y")) (Var "z")))),
+
+      -- Test case: Let with undefined variable in body (should fail)
+      testNeg (Let "x" (CstInt 1) (Add (Var "x") (Var "y")))
     ]

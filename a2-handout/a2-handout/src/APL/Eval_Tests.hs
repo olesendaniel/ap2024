@@ -4,12 +4,14 @@ import APL.AST (Exp (..))
 import APL.Eval (Error, Val (..), eval, runEval)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
-{-
-eval' :: Exp -> (([String], [(Val,Val)]), Either Error a)
-eval' = runEval . eval
 
-evalTests :: TestTree
-evalTests =
+eval' :: Exp -> Either Error Val
+eval' = snd . runEval . eval
+
+
+
+oldEvalTests :: TestTree
+oldEvalTests =
   testGroup
     "Evaluation"
     [ testCase "Add" $
@@ -78,19 +80,19 @@ evalTests =
         eval'
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
           @?= Right (ValBool True)
-    ]-}
+    ]
 evalMonad :: TestTree
 evalMonad =
   testGroup
-    "Evaluation" 
+    "Evaluation"
     [
-      testCase "runEval Simple" $ 
-        runEval 
+      testCase "runEval Simple" $
+        runEval
           (eval $ Print "foo" $ CstInt 2)
           @?= (["foo: 2"],Right (ValInt 2)),
       --
-      testCase "runEval Simple" $ 
-        runEval 
+      testCase "runEval Simple" $
+        runEval
           (eval $ Print "foo" $ CstBool True )
           @?= (["foo: True"] ,Right (ValBool True)),
       --
@@ -100,7 +102,7 @@ evalMonad =
           @?= (["foo: 2","bar: 3"],Right (ValInt 3)),
       --
       testCase "runEval function" $
-        runEval 
+        runEval
           (eval $ Print "foo" $ Lambda "x" (Var "x"))
           @?= (["foo: #<fun>"],Right (ValFun [] "x" (Var "x"))),
       --
@@ -123,12 +125,16 @@ evalMonad =
       testCase "evalKvGet invalid key" $
         runEval
           (eval $ KvGet (CstInt 0))
-          @?= ([],Left "Key invalid: ValInt 0")
+          @?= ([],Left "Key invalid: ValInt 0"),
+      --
+      testCase "TryCatch e1 saves var and fails" $
+        runEval
+          (eval $ TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))
+          @?= ([],Right (ValInt 11))
 
 
 
-      
     ]
 
 tests :: TestTree
-tests = testGroup "APL" [evalMonad]
+tests = testGroup "APL" [evalMonad, oldEvalTests]

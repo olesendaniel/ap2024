@@ -18,7 +18,7 @@ instance Functor CheckM where
 
 instance Applicative CheckM where
   pure a = CheckM $ \_env -> Right a
-  (<*>) :: CheckM (a -> b) -> CheckM a -> CheckM b 
+  (<*>) :: CheckM (a -> b) -> CheckM a -> CheckM b
   (<*>) = ap
 
 instance Monad CheckM where
@@ -26,9 +26,9 @@ instance Monad CheckM where
   CheckM x >>= f = CheckM $ \env ->
     case x env of
       Left err -> Left err
-      Right x' -> 
+      Right x' ->
         let CheckM y = f x'
-        in y env 
+        in y env
 
 askEnv :: CheckM Env
 askEnv = CheckM $ \env -> Right env
@@ -45,27 +45,27 @@ localEnv :: (Env -> Env) -> CheckM a -> CheckM a
 localEnv f (CheckM m) = CheckM $ \env -> m (f env)
 
 check2 :: Exp -> Exp -> CheckM ()
-check2 e1 e2 = do 
-    check e1 
+check2 e1 e2 = do
+    check e1
     check e2
 
 check3 :: Exp -> Exp -> Exp -> CheckM ()
-check3 e1 e2 e3 = do 
-    check e1 
+check3 e1 e2 e3 = do
+    check e1
     check e2
     check e3
 
 runCheckM :: CheckM () -> Maybe Error
-runCheckM (CheckM m) = case m envEmpty of 
+runCheckM (CheckM m) = case m envEmpty of
     Left err -> Just err
     Right _ -> Nothing
 
 check :: Exp -> CheckM ()
 check (CstInt _) = pure ()
-check (CstBool _) = pure () 
+check (CstBool _) = pure ()
 check (Var x) = do
   env <- askEnv
-  case envLookup x env of 
+  case envLookup x env of
     Just _ -> pure ()
     Nothing -> failure ("Unknown variable: " ++ x)
 check (Add e1 e2) = check2 e1 e2
@@ -88,4 +88,3 @@ check (KvGet e1 ) = check e1
 
 checkExp :: Exp -> Maybe Error
 checkExp = runCheckM . check
- 
