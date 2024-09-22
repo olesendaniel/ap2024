@@ -130,6 +130,11 @@ evalMonad =
       testCase "TryCatch e1 saves var and fails" $
         runEval
           (eval $ TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))
+          @?= ([],Right (ValInt 11)),
+      --
+      testCase "TryCatch e1 saves var and fails 2" $
+        runEval
+          (eval $ TryCatch (Apply (KvPut (CstInt 0) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (KvGet (CstInt 0)) (CstInt 1)))
           @?= ([],Right (ValInt 11))
 
 
