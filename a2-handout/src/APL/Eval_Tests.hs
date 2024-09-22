@@ -127,6 +127,11 @@ evalMonad =
           (eval $ KvGet (CstInt 0))
           @?= ([],Left "Key invalid: ValInt 0"),
       --
+      testCase "Eql (bool)" $
+        runEval
+          (eval $ Eql (CstBool True) (CstBool True))
+          @?= ([],Right (ValBool True)),
+      --
       testCase "TryCatch e1 saves var and fails" $
         runEval
           (eval $ TryCatch (Apply (Let "x" (CstInt 10) (CstInt 10) ) (Div (CstInt 3) (CstInt 0))) (Add (Var "x") (CstInt 1)))

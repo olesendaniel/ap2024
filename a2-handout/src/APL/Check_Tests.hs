@@ -27,6 +27,9 @@ tests =
       -- Test case: Checking a constant integer (should pass)
       testPos (CstInt 2),
 
+       -- Test case: Checking a constant bool (should pass)
+      testPos (CstBool True),
+
       -- Test case: Using an undefined variable (should fail)
       testNeg (Var "x"),
 
@@ -67,5 +70,14 @@ tests =
       testPos (Let "x" (CstInt 1) (Let "y" (CstInt 2) (Let "z" (Add (Var "x") (Var "y")) (Var "z")))),
 
       -- Test case: Let with undefined variable in body (should fail)
-      testNeg (Let "x" (CstInt 1) (Add (Var "x") (Var "y")))
+      testNeg (Let "x" (CstInt 1) (Add (Var "x") (Var "y"))),
+
+      -- Test If and check3 helper function (should pass)
+      testPos (If (Eql (CstBool True) (CstBool True)) (Add (CstInt 2)(CstInt 3)) (Sub (CstInt 2)(CstInt 3))),
+
+      -- Test KvPut/kvGet (should pass)
+      testPos (Apply (KvPut (CstInt 0)(CstInt 10))(KvGet (CstInt 0))),
+
+      -- Test kvGet (should fail)
+      testNeg (KvGet (CstInt 0))
     ]
