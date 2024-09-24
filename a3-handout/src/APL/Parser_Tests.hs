@@ -50,6 +50,16 @@ tests =
           parserTest "x/y/z" $ Div (Div (Var "x") (Var "y")) (Var "z")
         ],
       testGroup
+        "Power operator (right-associative)"
+        [ parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z")),
+          parserTest "x**y" $ Pow (Var "x") (Var "y")
+        ],
+      testGroup
+        "Equality operator (left-associative)"
+        [ parserTest "x==y==z" $ Eql (Eql (Var "x") (Var "y")) (Var "z"),
+          parserTest "x==y" $ Eql (Var "x") (Var "y")
+        ],
+      testGroup
         "Conditional expressions"
         [ parserTest "if x then y else z" $ If (Var "x") (Var "y") (Var "z"),
           parserTest "if x then y else if x then y else z" $
