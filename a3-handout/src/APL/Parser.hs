@@ -82,10 +82,18 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
+pFExp :: Parser Exp
+pFExp =
+  choice
+  [ pAtom,
+    pAtom *> pFExp
+  ]
+
 pLExp :: Parser Exp
 pLExp =
   choice
-    [ If
+    [
+      If
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
@@ -97,18 +105,30 @@ pLExp =
         <*> pAtom,
       KvGet
         <$> (lKeyword "get" *> pAtom),
-      pAtom
+      pFExp
     ]
 
+pExp3 :: Parser Exp
+pExp3 = pLExp >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            lString ""
+            y <- pLExp
+            chain $ Apply x y,
+          pure x
+        ]
+
 pExp2 :: Parser Exp
-pExp2 = pLExp >>= chain
+pExp2 = pExp3 >>= chain
   where
     chain x =
       choice
         [ do
             lString "**"
             y <- pExp2
-            pure $ Pow x y,
+            chain $ Pow x y,
           pure x
         ]
 
@@ -155,6 +175,7 @@ pExp = pExp0 >>= chain
             chain $ Eql x y,
           pure x
         ]
+
 
 parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of

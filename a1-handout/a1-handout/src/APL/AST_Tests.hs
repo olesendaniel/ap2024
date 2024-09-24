@@ -94,6 +94,9 @@ tests =
       --
       testCase "Apply like in feedback" $
         printExp (Apply (Let "x" (CstInt 4) (Var "f")) (Var "x"))
-        @?= "(Let x=4 in f) x"
+        @?= "(Let x=4 in f) x",
+      testCase "Apply " $
+        printExp (Apply (Var "x") (If (Var "x") (Var "y") (Var "z")))
+        @?= ""
           ]
 

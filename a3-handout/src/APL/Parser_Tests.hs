@@ -28,6 +28,7 @@ tests =
     [ testGroup
         "Constants"
         [ parserTest "123" $ CstInt 123,
+          parserTest "(123)" $ CstInt 123,
           parserTest " 123" $ CstInt 123,
           parserTest "123 " $ CstInt 123,
           parserTestFail "123f",
@@ -37,6 +38,7 @@ tests =
       testGroup
         "Basic operators"
         [ parserTest "x+y" $ Add (Var "x") (Var "y"),
+          parserTest "x    +    y" $ Add (Var "x") (Var "y"),
           parserTest "x-y" $ Sub (Var "x") (Var "y"),
           parserTest "x*y" $ Mul (Var "x") (Var "y"),
           parserTest "x/y" $ Div (Var "x") (Var "y")
@@ -52,6 +54,7 @@ tests =
       testGroup
         "Power operator (right-associative)"
         [ parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z")),
+          parserTest "x*y**z" $ Mul (Var "x") (Pow (Var "y") (Var "z")),
           parserTest "x**y" $ Pow (Var "x") (Var "y")
         ],
       testGroup
@@ -83,5 +86,16 @@ tests =
         "Lexing edge cases"
         [ parserTest "2 " $ CstInt 2,
           parserTest " 2" $ CstInt 2
+        ],
+      testGroup
+        "Function Application"
+        [ parserTest "x y" $ Apply (Var "x") (Var "y"),
+          parserTest "x y z" $ Apply (Apply (Var "x") (Var "y")) (Var "z"),
+          parserTest "x 1" $ Apply (Var "x") (CstInt 1),
+          parserTest "x(y z)" $  Apply (Var "x") (Apply (Var "y") (Var "z")),
+          parserTestFail  "x if x then y else z",
+          parserTest  "x (if x then y else z)" $ Apply (Var "x") (If (Var "x") (Var "y") (Var "z"))
+
         ]
+
     ]
