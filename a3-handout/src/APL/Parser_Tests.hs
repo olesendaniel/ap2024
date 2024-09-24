@@ -42,7 +42,7 @@ tests =
           parserTest "x/y" $ Div (Var "x") (Var "y")
         ],
       testGroup
-        "Operator priority"
+        "Operator priority (Add more tests here)"
         [ parserTest "x+y+z" $ Add (Add (Var "x") (Var "y")) (Var "z"),
           parserTest "x+y-z" $ Sub (Add (Var "x") (Var "y")) (Var "z"),
           parserTest "x+y*z" $ Add (Var "x") (Mul (Var "y") (Var "z")),
@@ -58,6 +58,15 @@ tests =
         "Equality operator (left-associative)"
         [ parserTest "x==y==z" $ Eql (Eql (Var "x") (Var "y")) (Var "z"),
           parserTest "x==y" $ Eql (Var "x") (Var "y")
+        ],
+      testGroup
+        "Print, Put, and Get commands"
+        [ parserTest "print \"foo\" x" $ Print "foo" (Var "x"),
+          parserTest "put x y" $ KvPut (Var "x") (Var "y"),
+          parserTest "get x" $ KvGet (Var "x"),
+          parserTest "get x + y" $ Add (KvGet (Var "x")) (Var "y"),
+          parserTest "print \"Hello, World!\" x" $ Print "Hello, World!" (Var "x"),
+          parserTest "put (x) y" $ KvPut (Var "x") (Var "y")
         ],
       testGroup
         "Conditional expressions"

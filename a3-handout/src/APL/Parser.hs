@@ -53,6 +53,7 @@ lInteger :: Parser Integer
 lInteger =
   lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
 
+
 lString :: String -> Parser ()
 lString s = lexeme $ void $ chunk s
 
@@ -104,11 +105,11 @@ pExp1 = pExp2 >>= chain
       choice
         [ do
             lString "*"
-            y <- pLExp
+            y <- pExp2
             chain $ Mul x y,
           do
             lString "/"
-            y <- pLExp
+            y <- pExp2
             chain $ Div x y,
           pure x
         ]
