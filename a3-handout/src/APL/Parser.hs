@@ -54,7 +54,7 @@ lInteger =
   lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
 
 parseString :: Parser String
-parseString = do
+parseString = lexeme $ do
   void $ chunk "\""
   content <- many (satisfy (/= '"'))  -- Match any character except a quote
   void $ chunk "\""
@@ -105,7 +105,7 @@ pLExp =
         <*> (lKeyword "else" *> pExp),
       Print
         <$> (lKeyword "print" *> parseString)
-        <*> pAtom,
+        <*> pExp,
       KvPut
         <$> (lKeyword "put" *> pAtom)
         <*> pAtom,
