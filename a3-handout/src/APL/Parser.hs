@@ -82,12 +82,18 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
+
 pFExp :: Parser Exp
-pFExp =
-  choice
-  [ pAtom,
-    pAtom *> pFExp
-  ]
+pFExp = pAtom >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            lString ""
+            y <- pAtom
+            chain $ Apply x y,
+          pure x
+        ]
 
 pLExp :: Parser Exp
 pLExp =
@@ -108,20 +114,9 @@ pLExp =
       pFExp
     ]
 
-pExp3 :: Parser Exp
-pExp3 = pLExp >>= chain
-  where
-    chain x =
-      choice
-        [ do
-            lString ""
-            y <- pLExp
-            chain $ Apply x y,
-          pure x
-        ]
 
 pExp2 :: Parser Exp
-pExp2 = pExp3 >>= chain
+pExp2 = pLExp >>= chain
   where
     chain x =
       choice
