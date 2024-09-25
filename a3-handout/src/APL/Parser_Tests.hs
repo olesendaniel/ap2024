@@ -98,19 +98,37 @@ tests =
         ],
       testGroup
         "TryCatch"
-        [ parserTest "try x catch y" $ TryCatch (Var "x") (Var "y")
+        [ parserTest "try x catch y" $ TryCatch (Var "x") (Var "y"),
+          parserTest "try 7 + 10 catch y" $ TryCatch (Add (CstInt 7) (CstInt 10)) (Var "y"),
+          parserTest "try 7 + false catch y" $ TryCatch (Add (CstInt 7) (CstBool False)) (Var "y")
 
         ],
       testGroup
         "Let binding"
         [ parserTest "let x = y in z" $  Let "x" (Var "y") (Var "z"),
+          parserTest "(let x = y in z)" $  Let "x" (Var "y") (Var "z"),
           parserTestFail "let true = y in z",
           parserTestFail "x let v = 2 in v"
 
         ],
       testGroup
         "Lambda"
-        [ parserTest "\\x -> y" $ Lambda "x" (Var "y")
+        [ parserTest "\\x -> y" $ Lambda "x" (Var "y"),
+          parserTest "\\x -> x + x" $ Lambda "x" (Add (Var "x") (Var "x")),
+          parserTest "\\x -> (x + x)" $ Lambda "x" (Add (Var "x") (Var "x")),
+          parserTest "\\x -> (\\y -> z)" $ Lambda "x" (Lambda "y" (Var "z")),
+          parserTest "(\\x -> (x ** 2)) 3" $ Apply (Lambda "x" (Pow (Var "x") (CstInt 2))) (CstInt 3)
+        ],
+      testGroup
+        "Misc tests"
+        [ parserTestFail "*",
+          parserTestFail "/",
+          parserTestFail "**",
+          parserTestFail "+",
+          parserTestFail "?",
+          parserTestFail "😊",
+          parserTestFail "",
+          parserTestFail " "
 
         ]
 
