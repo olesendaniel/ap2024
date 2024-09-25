@@ -69,7 +69,9 @@ tests =
           parserTest "get x" $ KvGet (Var "x"),
           parserTest "get x + y" $ Add (KvGet (Var "x")) (Var "y"),
           parserTest "print \"Hello, World!\" x" $ Print "Hello, World!" (Var "x"),
-          parserTest "put (x) y" $ KvPut (Var "x") (Var "y")
+          parserTest "put (x) y" $ KvPut (Var "x") (Var "y"),
+          parserTest "print \"😊\" x" $ Print "😊" (Var "x"),
+          parserTest "print \"let var in print\" x" $ Print "let var in print" (Var "x")
         ],
       testGroup
         "Conditional expressions"
@@ -108,7 +110,10 @@ tests =
         [ parserTest "let x = y in z" $  Let "x" (Var "y") (Var "z"),
           parserTest "(let x = y in z)" $  Let "x" (Var "y") (Var "z"),
           parserTestFail "let true = y in z",
-          parserTestFail "x let v = 2 in v"
+          parserTestFail "x let v = 2 in v",
+          parserTestFail "let 😊 = 2 in v",
+          parserTestFail "let x = 😊 in v",
+          parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v")
 
         ],
       testGroup
@@ -128,7 +133,13 @@ tests =
           parserTestFail "?",
           parserTestFail "😊",
           parserTestFail "",
-          parserTestFail " "
+          parserTestFail " ",
+          parserTest "TRUE" $ Var "TRUE",
+          parserTest "TR UE" $ Apply (Var "TR") (Var "UE"),
+          parserTest "tr ue" $ Apply (Var "tr") (Var "ue"),
+          parserTestFail "in",
+          parserTestFail "let",
+          parserTestFail "\\n"
 
         ]
 
