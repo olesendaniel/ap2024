@@ -96,7 +96,11 @@ tests =
           parserTest "x 1" $ Apply (Var "x") (CstInt 1),
           parserTest "x(y z)" $  Apply (Var "x") (Apply (Var "y") (Var "z")),
           parserTestFail  "x if x then y else z",
-          parserTest  "x (if x then y else z)" $ Apply (Var "x") (If (Var "x") (Var "y") (Var "z"))
+          parserTest  "x (if x then y else z)" $ Apply (Var "x") (If (Var "x") (Var "y") (Var "z")),
+          parserTest "f (x + y)" $ Apply (Var "f") (Add (Var "x") (Var "y")),
+          parserTest "f x + y" $ Add (Apply (Var "f") (Var "x")) (Var "y"),
+          parserTest "f x - g y" $ Sub (Apply (Var "f") (Var "x")) (Apply (Var "g") (Var "y"))
+
         ],
       testGroup
         "TryCatch"
@@ -113,7 +117,8 @@ tests =
           parserTestFail "x let v = 2 in v",
           parserTestFail "let 😊 = 2 in v",
           parserTestFail "let x = 😊 in v",
-          parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v")
+          parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v"),
+          parserTest "let x = 1 in let y = 2 in x + y" $ Let "x" (CstInt 1) (Let "y" (CstInt 2) (Add (Var "x") (Var "y")))
 
         ],
       testGroup
