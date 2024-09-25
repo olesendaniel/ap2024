@@ -82,13 +82,13 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
-
 pFExp :: Parser Exp
 pFExp = pAtom >>= chain
   where
     chain x =
       choice
-        [ do
+        [
+          do
             lString ""
             y <- pAtom
             chain $ Apply x y,
@@ -111,6 +111,16 @@ pLExp =
         <*> pAtom,
       KvGet
         <$> (lKeyword "get" *> pAtom),
+      TryCatch
+        <$> (lKeyword "try" *> pExp)
+        <*> (lKeyword "catch" *> pExp),
+      Let
+        <$> (lString "let" *> lVName)
+        <*> (lString "=" *> pExp)
+        <*> (lKeyword "in" *> pExp),
+      Lambda
+        <$> (lString "\\" *> lVName)
+        <*> (lString "->" *> pExp),
       pFExp
     ]
 

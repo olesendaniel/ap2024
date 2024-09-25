@@ -95,6 +95,22 @@ tests =
           parserTest "x(y z)" $  Apply (Var "x") (Apply (Var "y") (Var "z")),
           parserTestFail  "x if x then y else z",
           parserTest  "x (if x then y else z)" $ Apply (Var "x") (If (Var "x") (Var "y") (Var "z"))
+        ],
+      testGroup
+        "TryCatch"
+        [ parserTest "try x catch y" $ TryCatch (Var "x") (Var "y")
+
+        ],
+      testGroup
+        "Let binding"
+        [ parserTest "let x = y in z" $  Let "x" (Var "y") (Var "z"),
+          parserTestFail "let true = y in z",
+          parserTestFail "x let v = 2 in v"
+
+        ],
+      testGroup
+        "Lambda"
+        [ parserTest "\\x -> y" $ Lambda "x" (Var "y")
 
         ]
 
