@@ -103,14 +103,6 @@ pLExp =
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
-      Print
-        <$> (lKeyword "print" *> lParseString)
-        <*> pExp,
-      KvPut
-        <$> (lKeyword "put" *> pAtom)
-        <*> pAtom,
-      KvGet
-        <$> (lKeyword "get" *> pAtom),
       TryCatch
         <$> (lKeyword "try" *> pExp)
         <*> (lKeyword "catch" *> pExp),
@@ -124,9 +116,23 @@ pLExp =
       pFExp
     ]
 
+pExp3 :: Parser Exp
+pExp3 =
+  choice
+    [
+      Print
+        <$> (lKeyword "print" *> lParseString)
+        <*> pAtom,
+      KvPut
+        <$> (lKeyword "put" *> pAtom)
+        <*> pAtom,
+      KvGet
+        <$> (lKeyword "get" *> pAtom),
+      pLExp
+    ]
 
 pExp2 :: Parser Exp
-pExp2 = pLExp >>= chain
+pExp2 = pExp3 >>= chain
   where
     chain x =
       choice

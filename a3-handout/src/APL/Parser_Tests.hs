@@ -71,7 +71,8 @@ tests =
           parserTest "print \"Hello, World!\" x" $ Print "Hello, World!" (Var "x"),
           parserTest "put (x) y" $ KvPut (Var "x") (Var "y"),
           parserTest "print \"😊\" x" $ Print "😊" (Var "x"),
-          parserTest "print \"let var in print\" x" $ Print "let var in print" (Var "x")
+          parserTest "print \"let var in print\" x" $ Print "let var in print" (Var "x"),
+          parserTest "print \"thingy\" (3+5)" $ Print "thingy" (Add (CstInt 3) (CstInt 5))
         ],
       testGroup
         "Conditional expressions"
@@ -113,7 +114,8 @@ tests =
           parserTestFail "x let v = 2 in v",
           parserTestFail "let 😊 = 2 in v",
           parserTestFail "let x = 😊 in v",
-          parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v")
+          parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v"),
+          parserTestFail "let if = x in v"
 
         ],
       testGroup
