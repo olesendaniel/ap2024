@@ -119,11 +119,8 @@ tests =
           parserTestFail "let 😊 = 2 in v",
           parserTestFail "let x = 😊 in v",
           parserTest "let x = x in v" $ Let "x" (Var "x") (Var "v"),
-<<<<<<< HEAD
-          parserTestFail "let if = x in v"
-=======
+          parserTestFail "let if = x in v",
           parserTest "let x = 1 in let y = 2 in x + y" $ Let "x" (CstInt 1) (Let "y" (CstInt 2) (Add (Var "x") (Var "y")))
->>>>>>> 953e48be0a9f0ae88c49c7d9f75bbcbf10e30b8e
 
         ],
       testGroup
