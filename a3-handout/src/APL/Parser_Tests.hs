@@ -72,7 +72,8 @@ tests =
           parserTest "put (x) y" $ KvPut (Var "x") (Var "y"),
           parserTest "print \"😊\" x" $ Print "😊" (Var "x"),
           parserTest "print \"let var in print\" x" $ Print "let var in print" (Var "x"),
-          parserTest "print \"thingy\" (3+5)" $ Print "thingy" (Add (CstInt 3) (CstInt 5))
+          parserTest "print \"thingy\" (3+5)" $ Print "thingy" (Add (CstInt 3) (CstInt 5)),
+          parserTest "print \"\n\" x" $ Print "\n" (Var "x")
         ],
       testGroup
         "Conditional expressions"
