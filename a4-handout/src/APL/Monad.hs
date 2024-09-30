@@ -15,6 +15,7 @@ module APL.Monad
     evalKvGet,
     evalKvPut,
     transaction,
+    keyValueRemove,
     EvalM,
     Val (..),
     EvalOp (..),
@@ -76,15 +77,27 @@ data EvalOp a
   | StatePutOp State a
   | PrintOp String a
   | ErrorOp Error
+  | TryCatchOp a a
+  | KvGetOp Val (Val -> a)
+  | KvPutOp Val Val a
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
   fmap f (StateGetOp k) = StateGetOp $ f . k
   fmap f (StatePutOp s m) = StatePutOp s $ f m
   fmap f (PrintOp p m) = PrintOp p $ f m
+  fmap f (TryCatchOp m1 m2) = TryCatchOp (f m1) (f m2)
+  fmap f (KvGetOp v va) = KvGetOp v $ f . va
+  fmap f (KvPutOp v1 v2 a) = KvPutOp v1 v2 $ f a
   fmap _ (ErrorOp e) = ErrorOp e
 
 type EvalM a = Free EvalOp a
+
+keyValueRemove :: Val -> [(Val, Val)] -> [(Val, Val)]
+keyValueRemove _ [] = []
+keyValueRemove v (c:cs) = if v == fst c
+  then cs
+  else c : keyValueRemove v cs
 
 askEnv :: EvalM Env
 askEnv = Free $ ReadOp $ \env -> pure env
@@ -117,13 +130,13 @@ failure :: String -> EvalM a
 failure = Free . ErrorOp
 
 catch :: EvalM a -> EvalM a -> EvalM a
-catch = error "TODO"
+catch m1 m2 = Free $ TryCatchOp m1 m2
 
 evalKvGet :: Val -> EvalM Val
-evalKvGet = error "TODO"
+evalKvGet v = Free $ KvGetOp v $ \f -> pure f
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut = error "TODO"
+evalKvPut v1 v2 = Free $ KvPutOp v1 v2 $ pure ()
 
 transaction :: EvalM () -> EvalM ()
 transaction = error "TODO"

@@ -16,7 +16,7 @@ evalIO' :: Exp -> IO (Either Error Val)
 evalIO' = runEvalIO . eval
 
 tests :: TestTree
-tests = testGroup "Free monad interpreters" [pureTests, ioTests]
+tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests]
 
 pureTests :: TestTree
 pureTests =
@@ -92,4 +92,35 @@ ioTests =
         --            Print "This is 1" $
         --              CstInt 1
         --    (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1)
+    ]
+
+tryCatchTests :: TestTree
+tryCatchTests =
+  testGroup
+    "try catch interpreter"
+    [ testCase "test" $ do
+        runEval $ Free $ TryCatchOp (failure "Oh no!") (pure "Success!")
+        @?= ([], Right "Success!"),
+    --
+      testCase "test2" $ do
+        runEval $ eval $ TryCatch (CstInt 5) (CstInt 1 `Div` CstInt 0)
+        @?= ([], Right $ ValInt 5),
+    --
+      testCase "test3" $ do
+        res <- runEvalIO $ eval $ TryCatch (CstInt 0 `Eql` CstBool True) (CstInt 1 `Div` CstInt 0)
+        res @?= Left "Division by zero"
+
+      ]
+putGetTests :: TestTree
+putGetTests =
+  testGroup
+    "Put get testing"
+    [
+      testCase "simple" $ do
+        runEval $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 0))
+        @?= ([],Right (ValInt 1)),
+      --
+      testCase "simple 2" $ do
+        runEval $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 1))
+        @?= ([],Left "Key not in state")
     ]

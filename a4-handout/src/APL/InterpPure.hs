@@ -13,4 +13,19 @@ runEval = runEval' envEmpty stateInitial
     runEval' r s (Free (PrintOp p m)) =
       let (ps, res) = runEval' r s m
        in (p : ps, res)
+    runEval' r s (Free (TryCatchOp m1 m2)) = case runEval' r s m1 of
+      (_, Left _) -> runEval' r s m2
+      (_, Right _) -> runEval' r s m1
+    runEval' r s (Free (KvGetOp v va)) = case lookup v s of
+      Just val -> runEval' r s $ va val
+      Nothing -> ([], Left "Key not in state")
+    runEval' r s (Free (KvPutOp v1 v2 a)) = case lookup v1 s of
+      Just _ -> do
+        let s' = keyValueRemove v1 s
+        let s'' = s' ++ [(v1, v2)]
+         in runEval' r s'' a
+      Nothing ->
+        let s' = s ++ [(v1, v2)]
+         in runEval' r s' a
     runEval' _ _ (Free (ErrorOp e)) = ([], Left e)
+
