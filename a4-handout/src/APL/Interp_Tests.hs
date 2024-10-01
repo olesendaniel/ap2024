@@ -16,7 +16,7 @@ evalIO' :: Exp -> IO (Either Error Val)
 evalIO' = runEvalIO . eval
 
 tests :: TestTree
-tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests]
+tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests, dbTests]
 
 pureTests :: TestTree
 pureTests =
@@ -123,4 +123,24 @@ putGetTests =
       testCase "simple 2" $ do
         runEval $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 1))
         @?= ([],Left "Key not in state")
+    ]
+dbTests :: TestTree
+dbTests =
+  testGroup
+    "Tests with database"
+    [
+      testCase "simple" $ do
+        res <- runEvalIO $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 0))
+        res @?= Right (ValInt 1),
+      --
+      --testCase "simple 2" $ do
+      --  res <- runEvalIO $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 1))
+      --  res @?= Left "ValInt 1 not in DB",
+      --
+      testCase "Missing key test" $ do
+        (_, res) <-
+          captureIO ["ValInt 1"] $
+            runEvalIO $
+              Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        res @?= Right (ValInt 1)
     ]

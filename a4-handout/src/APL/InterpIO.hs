@@ -62,8 +62,14 @@ runEvalIO evalm = do
     runEvalIO' :: Env -> FilePath -> EvalM a -> IO (Either Error a)
     runEvalIO' _ _ (Pure x) = pure $ pure x
     runEvalIO' r db (Free (ReadOp k)) = runEvalIO' r db $ k r
-    runEvalIO' r db (Free (StateGetOp k)) = error "TODO in Task 3"
-    runEvalIO' r db (Free (StatePutOp s m)) = error "TODO in Task 3"
+    runEvalIO' r db (Free (StateGetOp k)) = do
+      temp <- readDB db
+      case temp of
+        Left e -> pure $ Left e
+        Right res -> runEvalIO' r db $ k res
+    runEvalIO' r db (Free (StatePutOp s k)) = do
+      writeDB db s
+      runEvalIO' r db k
     runEvalIO' r db (Free (PrintOp p m)) = do
       putStrLn p
       runEvalIO' r db m
@@ -72,6 +78,32 @@ runEvalIO evalm = do
       case result of
         Left _ -> runEvalIO' r db m2
         Right _ -> runEvalIO' r db m1
+    runEvalIO' r db (Free (KvGetOp v va)) = do
+      temp <- readDB db
+      case temp of
+        Left e -> pure $ Left e
+        Right s ->
+          case lookup v s of
+            Just val -> runEvalIO' r db $ va val
+            Nothing -> do
+              str <- prompt (show v ++ " not in DB, pick new key")
+              case readVal str of
+                Just val' -> runEvalIO' r db $ va val'
+                Nothing -> pure $ Left "Key not valid"
+    runEvalIO' r db (Free (KvPutOp v1 v2 a)) = do
+      temp <- readDB db
+      case temp of
+        Left e -> pure $ Left e
+        Right s ->
+          case lookup v1 s of
+            Just _ -> do
+              let s' = keyValueRemove v1 s
+              let s'' = s' ++ [(v1,v2)]
+              let _ = writeDB db (s'' ++ [(v1,v2)])
+                in runEvalIO' r db a
+            Nothing -> do
+              writeDB db (s ++ [(v1,v2)])
+              runEvalIO' r db a
     runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Left e
 
 
