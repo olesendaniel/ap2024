@@ -16,7 +16,17 @@ evalIO' :: Exp -> IO (Either Error Val)
 evalIO' = runEvalIO . eval
 
 tests :: TestTree
-tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests, dbTests]
+tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests, dbTests, transactionTests, transactionTestsIO]
+
+get0 :: Exp
+get0 = KvGet (CstInt 0)
+
+goodPut :: EvalM ()
+goodPut = evalKvPut (ValInt 0) (ValInt 1)
+
+badPut :: Free EvalOp b
+badPut = evalKvPut (ValInt 0) (ValBool False) >> failure "die"
+
 
 pureTests :: TestTree
 pureTests =
@@ -122,7 +132,11 @@ putGetTests =
       --
       testCase "simple 2" $ do
         runEval $ Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 1))
-        @?= ([],Left "Key not in state")
+        @?= ([],Left "Key not in state: ValInt 1"),
+      --
+      testCase "simple" $ do
+        runEval $ Free $ KvPutOp (ValInt 0) (ValBool False) (evalKvGet (ValInt 0))
+        @?= ([],Right (ValBool False))
     ]
 dbTests :: TestTree
 dbTests =
@@ -144,3 +158,61 @@ dbTests =
               Free $ KvGetOp (ValInt 0) $ \val -> pure val
         res @?= Right (ValInt 1)
     ]
+transactionTests :: TestTree
+transactionTests =
+  testGroup
+    "Tests with transaction"
+    [
+      testCase "invalid" $ do
+        runEval $ transaction (evalKvPut (ValInt 0) (ValBool False) >> failure "die") >> eval (KvGet (CstInt 0))
+        @?= ([],Left "Key not in state: ValInt 0"),
+      --
+      testCase "Valid" $ do
+        runEval $ transaction (evalKvPut (ValInt 0) (ValInt 1)) >> eval (KvGet (CstInt 0))
+        @?= ([],Right (ValInt 1)),
+      --
+      testCase "Print" $ do
+        runEval $ transaction (evalPrint "weee" >> failure "oh shit")
+        @?= (["weee"],Right ()),
+      --
+      testCase "Print" $ do
+        runEval $ transaction (evalPrint "weee" >> failure "oh shit") >> evalPrint "weee2"
+        @?= (["weee", "weee2"],Right ()),
+      --
+      testCase "Print" $ do
+        runEval $ transaction (evalPrint "weee" >> evalPrint "weee2")
+        @?= (["weee", "weee2"],Right ()),
+      --
+      testCase "Nested" $ do
+        runEval $ transaction (goodPut >> transaction badPut) >> eval get0
+        @?= ([],Right (ValInt 1)),
+            --
+      testCase "Nested 2" $ do
+        runEval $ transaction (transaction badPut) >> eval get0
+        @?= ([],Left "Key not in state: ValInt 0")
+    ]
+transactionTestsIO :: TestTree
+transactionTestsIO =
+  testGroup
+    "Tests with transaction"
+      [
+      testCase "Valid" $ do
+        res <- runEvalIO $ transaction (evalKvPut (ValInt 0) (ValInt 1)) >> eval (KvGet (CstInt 0))
+        res @?= Right (ValInt 1),
+      --
+      testCase "Print" $ do
+        res <- runEvalIO $ transaction (evalPrint "weee" >> failure "oh shit")
+        res @?= Right (),
+      --
+      testCase "Print" $ do
+        res <- runEvalIO $ transaction (evalPrint "weee" >> failure "oh shit") >> evalPrint "weee2"
+        res @?= Right (),
+      --
+      testCase "Print" $ do
+        res <- runEvalIO $ transaction (evalPrint "weee" >> evalPrint "weee2")
+        res @?= Right (),
+      --
+      testCase "Nested" $ do
+        res <- runEvalIO $ transaction (goodPut >> transaction badPut) >> eval get0
+        res @?= Right (ValInt 1)
+      ]

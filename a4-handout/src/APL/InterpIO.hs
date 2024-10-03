@@ -104,6 +104,16 @@ runEvalIO evalm = do
             Nothing -> do
               writeDB db (s ++ [(v1,v2)])
               runEvalIO' r db a
+    runEvalIO' r db (Free (TransactionOp m a)) =
+      withTempDB $ \tempDB -> do
+        copyDB db tempDB
+        do
+          temp <- runEvalIO' r tempDB m
+          case temp of
+            Left _ -> runEvalIO' r db a
+            Right _ -> do
+              copyDB tempDB db
+              runEvalIO' r db a
     runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Left e
 
 
