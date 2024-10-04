@@ -118,7 +118,19 @@ tryCatchTests =
     --
       testCase "test3" $ do
         res <- runEvalIO $ eval $ TryCatch (CstInt 0 `Eql` CstBool True) (CstInt 1 `Div` CstInt 0)
-        res @?= Left "Division by zero"
+        res @?= Left "Division by zero",
+    --
+    testCase "TryCatch with failed KvPutOp" $ do
+    let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (failure "Error in m1")
+    let m2 = pure (ValInt 42)
+    runEval (Free $ TryCatchOp m1 m2)
+    @?= ([], Right (ValInt 42)),
+    --
+    testCase "TryCatch without failure" $ do
+    let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 0))
+    let m2 = pure (ValInt 42)
+    runEval (Free $ TryCatchOp m1 m2)
+    @?= ([], Right (ValInt 1))
 
       ]
 putGetTests :: TestTree
@@ -136,7 +148,18 @@ putGetTests =
       --
       testCase "simple" $ do
         runEval $ Free $ KvPutOp (ValInt 0) (ValBool False) (evalKvGet (ValInt 0))
-        @?= ([],Right (ValBool False))
+        @?= ([],Right (ValBool False)),
+      --
+      testCase "Missing key in KvGet" $ do
+      (_, res) <- captureIO ["ValInt 5"] $
+                  runEvalIO $ Free $ KvGetOp (ValInt 0) $ \val -> pure val
+      res @?= Right (ValInt 5),
+      --
+      testCase "Invalid key-value input" $ do
+      (_, res) <- captureIO ["joe nuts"] $
+                  runEvalIO $ Free $ KvGetOp (ValInt 0) $ \val -> pure val
+      res @?= Left "Key not valid"
+
     ]
 dbTests :: TestTree
 dbTests =
@@ -189,7 +212,15 @@ transactionTests =
             --
       testCase "Nested 2" $ do
         runEval $ transaction (transaction badPut) >> eval get0
-        @?= ([],Left "Key not in state: ValInt 0")
+        @?= ([],Left "Key not in state: ValInt 0"),
+      --
+      testCase "Successful transaction" $ do
+      runEval $ transaction (evalKvPut (ValInt 0) (ValInt 1)) >> eval (KvGet (CstInt 0))
+      @?= ([], Right (ValInt 1)),
+      --
+      testCase "Transaction rollback on failure" $ do
+      runEval $ transaction (evalKvPut (ValInt 0) (ValInt 1) >> failure "Fail") >> eval (KvGet (CstInt 0))
+      @?= ([], Left "Key not in state: ValInt 0")
     ]
 transactionTestsIO :: TestTree
 transactionTestsIO =
@@ -214,5 +245,11 @@ transactionTestsIO =
       --
       testCase "Nested" $ do
         res <- runEvalIO $ transaction (goodPut >> transaction badPut) >> eval get0
-        res @?= Right (ValInt 1)
+        res @?= Right (ValInt 1),
+      --
+      testCase "IO-based missing key recovery" $ do
+      (_, res) <- captureIO ["ValInt 10"] $
+                  runEvalIO $ evalKvGet (ValInt 0)
+      res @?= Right (ValInt 10)
+
       ]
