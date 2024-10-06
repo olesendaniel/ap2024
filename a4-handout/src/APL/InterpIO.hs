@@ -88,8 +88,11 @@ runEvalIO evalm = do
             Nothing -> do
               str <- prompt (show v ++ " not in DB, pick new key")
               case readVal str of
-                Just val' -> runEvalIO' r db $ va val'
-                Nothing -> pure $ Left "Key not valid"
+                Just val' -> do
+                  let s' = s ++ [(v, val')]
+                  writeDB db s'
+                  runEvalIO' r db $ va val'
+                Nothing -> pure $ Left "Value not valid"
     runEvalIO' r db (Free (KvPutOp v1 v2 a)) = do
       temp <- readDB db
       case temp of
@@ -115,5 +118,3 @@ runEvalIO evalm = do
               copyDB tempDB db
               runEvalIO' r db a
     runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Left e
-
-
