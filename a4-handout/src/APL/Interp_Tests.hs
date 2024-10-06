@@ -12,8 +12,8 @@ import Test.Tasty.HUnit (testCase, (@?=))
 eval' :: Exp -> ([String], Either Error Val)
 eval' = runEval . eval
 
-evalIO' :: Exp -> IO (Either Error Val)
-evalIO' = runEvalIO . eval
+--evalIO' :: Exp -> IO (Either Error Val)
+--evalIO' = runEvalIO . eval
 
 tests :: TestTree
 tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchTests, putGetTests, dbTests, transactionTests, transactionTestsIO]
@@ -121,16 +121,28 @@ tryCatchTests =
         res @?= Left "Division by zero",
     --
     testCase "TryCatch with failed KvPutOp" $ do
-    let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (failure "Error in m1")
-    let m2 = pure (ValInt 42)
-    runEval (Free $ TryCatchOp m1 m2)
-    @?= ([], Right (ValInt 42)),
+      let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (failure "Error in m1")
+      let m2 = pure (ValInt 42)
+      runEval (Free $ TryCatchOp m1 m2)
+      @?= ([], Right (ValInt 42)),
     --
     testCase "TryCatch without failure" $ do
-    let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 0))
-    let m2 = pure (ValInt 42)
-    runEval (Free $ TryCatchOp m1 m2)
-    @?= ([], Right (ValInt 1))
+      let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (evalKvGet (ValInt 0))
+      let m2 = pure (ValInt 42)
+      runEval (Free $ TryCatchOp m1 m2)
+      @?= ([], Right (ValInt 1)),
+    --
+    testCase "TryCatch effects visible in m2" $ do
+      let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (failure "Error in m1")
+      let m2 = Free $ KvGetOp (ValInt 0) $ \val -> pure val
+      runEval (Free $ TryCatchOp m1 m2)
+      @?= ([],Left "Key not in state: ValInt 0"),
+    --
+    testCase "TryCatch effects visible in m2 (IO)" $ do
+      let m1 = Free $ KvPutOp (ValInt 0) (ValInt 1) (failure "Error in m1")
+      let m2 = Free $ KvGetOp (ValInt 0) $ \val -> pure val
+      res <- runEvalIO (Free $ TryCatchOp m1 m2)
+      res @?= Right (ValInt 1)
 
       ]
 putGetTests :: TestTree
@@ -158,7 +170,7 @@ putGetTests =
       testCase "Invalid key-value input" $ do
       (_, res) <- captureIO ["joe nuts"] $
                   runEvalIO $ Free $ KvGetOp (ValInt 0) $ \val -> pure val
-      res @?= Left "Key not valid"
+      res @?= Left "Value not valid"
 
     ]
 dbTests :: TestTree
