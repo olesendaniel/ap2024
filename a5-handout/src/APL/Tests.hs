@@ -3,9 +3,9 @@ module APL.Tests
   )
 where
 
-import APL.AST (Exp (..), subExp)
+import APL.AST (Exp (..), subExp, VName)
 import APL.Error (isVariableError, isDomainError, isTypeError)
-import APL.Check (checkExp)
+import APL.Check (checkExp,)
 import Test.QuickCheck
   ( Property
   , Gen
@@ -15,10 +15,14 @@ import Test.QuickCheck
   , checkCoverage
   , oneof
   , sized
+  , frequency
+  , elements
+  , listOf
   )
 
+
 instance Arbitrary Exp where
-  arbitrary = sized genExp
+  arbitrary = sized $ \size -> genExp size []
 
   shrink (Add e1 e2) =
     e1 : e2 : [Add e1' e2 | e1' <- shrink e1] ++ [Add e1 e2' | e2' <- shrink e2]
@@ -44,28 +48,48 @@ instance Arbitrary Exp where
     e1 : e2 : [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
   shrink _ = []
 
-genExp :: Int -> Gen Exp
-genExp 0 = oneof [CstInt <$> arbitrary, CstBool <$> arbitrary]
-genExp size =
-  oneof
-    [ CstInt <$> arbitrary
-    , CstBool <$> arbitrary
-    , Add <$> genExp halfSize <*> genExp halfSize
-    , Sub <$> genExp halfSize <*> genExp halfSize
-    , Mul <$> genExp halfSize <*> genExp halfSize
-    , Div <$> genExp halfSize <*> genExp halfSize
-    , Pow <$> genExp halfSize <*> genExp halfSize
-    , Eql <$> genExp halfSize <*> genExp halfSize
-    , If <$> genExp thirdSize <*> genExp thirdSize <*> genExp thirdSize
-    , Var <$> arbitrary
-    , Let <$> arbitrary <*> genExp halfSize <*> genExp halfSize
-    , Lambda <$> arbitrary <*> genExp (size - 1)
-    , Apply <$> genExp halfSize <*> genExp halfSize 
-    , TryCatch <$> genExp halfSize <*> genExp halfSize
-    ]
+genVar :: Gen VName
+genVar = do
+  alphaNums <- listOf $ elements $ ['a' .. 'z']  ++ ['0' .. '9']
+  let lenOfList = length alphaNums
+  if lenOfList >= 2 && lenOfList <= 4
+    then pure alphaNums
+  else
+    genVar
+
+genExp :: Int -> [VName] -> Gen Exp
+genExp 0 v =
+    oneof [ CstInt <$> arbitrary
+          , CstBool <$> arbitrary]
+
+genExp size v =
+  do
+    v' <- genVar
+    frequency $
+      --[(100, Var <$> getVar v ),
+      [(100, CstInt <$> arbitrary),
+      (100, CstBool <$> arbitrary),
+      (100, Add <$> genExp halfSize v <*> genExp halfSize v),
+      (100, Sub <$> genExp halfSize v <*> genExp halfSize v),
+      (100, Mul <$> genExp halfSize v <*> genExp halfSize v),
+      (100, Div <$> genExp halfSize v <*> genExp halfSize v),
+      (100, Pow <$> genExp halfSize v <*> genExp halfSize v),
+      (100, Eql <$> genExp halfSize v <*> genExp halfSize v),
+      (100, If <$> genExp thirdSize v <*> genExp thirdSize v <*> genExp thirdSize v),
+      (500, Var <$> pure v'),
+      (50, Let <$> arbitrary <*> genExp halfSize (v' : v) <*> genExp halfSize (v' : v)),
+      (50, Lambda <$> arbitrary <*> genExp (size - 1) (v' : v)),
+      (100, Apply <$> genExp halfSize v <*> genExp halfSize v),
+      (100, TryCatch <$> genExp halfSize v <*> genExp halfSize v)
+      ]
+
   where
     halfSize = size `div` 2
     thirdSize = size `div` 3
+
+getVar :: [VName] -> Gen VName
+getVar [] = genVar
+getVar v = elements v
 
 expCoverage :: Exp -> Property
 expCoverage e = checkCoverage
