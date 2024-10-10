@@ -17,11 +17,11 @@ import Test.QuickCheck
   , sized
   , frequency
   , elements
-  , quickCheck
-  , withMaxSuccess
+  --, quickCheck
+  --, withMaxSuccess
   )
 import APL.Parser(parseAPL, keywords)
-import APL.Eval(runEval)
+import APL.Eval(runEval, eval)
 
 
 instance Arbitrary Exp where
@@ -118,7 +118,7 @@ parsePrinted e =
 onlyCheckedErrors :: Exp -> Bool
 onlyCheckedErrors e = do
   let listOfErrors = checkExp e
-  let res = runEval $ pure e
+  let res = runEval $ eval e
   case res of
     Left err -> err `elem` listOfErrors
     Right _ -> True
