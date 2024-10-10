@@ -30,6 +30,7 @@ tests =
         [ parserTest "123" $ CstInt 123,
           parserTest "(123)" $ CstInt 123,
           parserTest " 123" $ CstInt 123,
+          parserTest "-123" $ CstInt (-123),
           parserTest "123 " $ CstInt 123,
           parserTestFail "123f",
           parserTest "true" $ CstBool True,

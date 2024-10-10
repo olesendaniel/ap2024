@@ -1,4 +1,4 @@
-module APL.Parser (parseAPL) where
+module APL.Parser (parseAPL, keywords, elem) where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (void)
@@ -47,8 +47,16 @@ lVName = lexeme $ try $ do
     else pure v
 
 lInteger :: Parser Integer
-lInteger =
-  lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
+lInteger = lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
+
+  --lexeme $ do
+  --sign <- optional (satisfy (== '-'))
+  --digits <- some (satisfy isDigit)
+  --_ <- notFollowedBy (satisfy isAlphaNum)
+  --let value = read digits
+  --pure $ case sign of
+  --  Just _ -> -value
+  --  Nothing -> value
 
 lString :: String -> Parser ()
 lString s = lexeme $ void $ chunk s

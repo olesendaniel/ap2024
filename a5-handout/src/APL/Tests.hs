@@ -3,7 +3,7 @@ module APL.Tests
   )
 where
 
-import APL.AST (Exp (..), subExp, VName)
+import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Error (isVariableError, isDomainError, isTypeError)
 import APL.Check (checkExp,)
 import Test.QuickCheck
@@ -17,8 +17,11 @@ import Test.QuickCheck
   , sized
   , frequency
   , elements
-  , listOf
+  , quickCheck
+  , withMaxSuccess
   )
+import APL.Parser(parseAPL, keywords)
+import APL.Eval(runEval)
 
 
 instance Arbitrary Exp where
@@ -50,24 +53,27 @@ instance Arbitrary Exp where
 
 genVar :: Gen VName
 genVar = do
-  alphaNums <- listOf $ elements $ ['a' .. 'z']  ++ ['0' .. '9']
-  let lenOfList = length alphaNums
-  if lenOfList >= 2 && lenOfList <= 4
-    then pure alphaNums
-  else
-    genVar
+  c1 <- elements ['a' .. 'z']
+  c2 <- elements $ ['a' .. 'z'] ++ ['0' .. '9']
+  c3 <- elements $ ['a' .. 'z'] ++ ['0' .. '9']
+  c4 <- elements $ ['a' .. 'z'] ++ ['0' .. '9']
+  tmp <- elements [c1 : c2 : [], c1 : c2 : c3 : [], c1 : c2 : c3 : c4 : []]
+  if tmp `elem` keywords
+    then genVar
+  else pure tmp
+
+
 
 genExp :: Int -> [VName] -> Gen Exp
-genExp 0 v =
-    oneof [ CstInt <$> arbitrary
+genExp 0 _ =
+    oneof [ CstInt <$> abs <$> arbitrary
           , CstBool <$> arbitrary]
 
 genExp size v =
   do
     v' <- genVar
     frequency $
-      --[(100, Var <$> getVar v ),
-      [(100, CstInt <$> arbitrary),
+      [(100, CstInt <$> abs <$> arbitrary),
       (100, CstBool <$> arbitrary),
       (100, Add <$> genExp halfSize v <*> genExp halfSize v),
       (100, Sub <$> genExp halfSize v <*> genExp halfSize v),
@@ -76,20 +82,19 @@ genExp size v =
       (100, Pow <$> genExp halfSize v <*> genExp halfSize v),
       (100, Eql <$> genExp halfSize v <*> genExp halfSize v),
       (100, If <$> genExp thirdSize v <*> genExp thirdSize v <*> genExp thirdSize v),
-      (500, Var <$> pure v'),
-      (50, Let <$> arbitrary <*> genExp halfSize (v' : v) <*> genExp halfSize (v' : v)),
-      (50, Lambda <$> arbitrary <*> genExp (size - 1) (v' : v)),
+      (5, Var <$> genVar),
+      (150, Let <$> pure v' <*> genExp halfSize (v' : v) <*> genExp halfSize (v' : v)),
+      (150, Lambda <$> pure v' <*> genExp (size - 1) (v' : v)),
       (100, Apply <$> genExp halfSize v <*> genExp halfSize v),
       (100, TryCatch <$> genExp halfSize v <*> genExp halfSize v)
-      ]
+      ] ++
+      case v of
+        [] -> []
+        _ -> [(100, Var <$> elements v)]
 
   where
     halfSize = size `div` 2
     thirdSize = size `div` 3
-
-getVar :: [VName] -> Gen VName
-getVar [] = genVar
-getVar v = elements v
 
 expCoverage :: Exp -> Property
 expCoverage e = checkCoverage
@@ -103,10 +108,20 @@ expCoverage e = checkCoverage
   $ ()
 
 parsePrinted :: Exp -> Bool
-parsePrinted _ = undefined
+parsePrinted e =
+  let print1 = printExp e
+  in case parseAPL "" print1 of
+    Left _ -> False
+    Right e1 -> e == e1
+
 
 onlyCheckedErrors :: Exp -> Bool
-onlyCheckedErrors _ = undefined
+onlyCheckedErrors e = do
+  let listOfErrors = checkExp e
+  let res = runEval $ pure e
+  case res of
+    Left err -> err `elem` listOfErrors
+    Right _ -> True
 
 properties :: [(String, Property)]
 properties =
