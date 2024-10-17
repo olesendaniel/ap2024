@@ -90,8 +90,13 @@ data JobStatus
 type WorkerName = String
 
 -- | Messages sent to workers. These are sent both by SPC and by
--- processes spawned by the workes.
+-- processes spawned by the workers.
 data WorkerMsg -- TODO: add messages.
+  =
+    MsgJobToDo Job JobId
+  |
+    MsgWorkerJobCancel JobId
+
 
 -- Messages sent to SPC.
 data SPCMsg
@@ -105,6 +110,10 @@ data SPCMsg
     MsgJobWait JobId (ReplyChan JobDoneReason)
   | -- | Some time has passed.
     MsgTick
+  |
+    MsgWorkerDone JobId WorkerName JobDoneReason
+  |
+    MsgWorkerAdd WorkerName (ReplyChan (Either String Worker))
 
 -- | A handle to the SPC instance.
 data SPC = SPC (Server SPCMsg)
@@ -117,7 +126,9 @@ data SPCState = SPCState
   { spcJobsPending :: [(JobId, Job)],
     spcJobsRunning :: [(JobId, Job)],
     spcJobsDone :: [(JobId, JobDoneReason)],
-    spcJobCounter :: JobId
+    spcJobCounter :: JobId,
+    spcWorkerList :: [(Worker, WorkerName, Maybe JobId)],
+    spcWaiting :: [(JobId, ReplyChan JobDoneReason)]
     -- TODO: you will need to add more fields.
   }
 
@@ -163,7 +174,35 @@ runSPCM :: SPCState -> SPCM a -> IO a
 runSPCM state (SPCM f) = fst <$> f state
 
 schedule :: SPCM ()
-schedule = undefined
+schedule = do
+  state <- get
+  let pendingJobsList = spcJobsPending state
+  if null pendingJobsList
+    then
+      return()
+    else
+      let workerList = spcWorkerList state
+      in case checkWorkerAvailability workerList of
+        Nothing -> pure ()
+        Just (Worker s, name) -> do
+          let job = snd $ head pendingJobsList
+          let jobId = fst $ head pendingJobsList
+          let jobMsg = MsgJobToDo job jobId
+          io $ sendTo s jobMsg
+          let jobsRunningList = spcJobsRunning state
+          let jobsPendingList = spcJobsPending state
+          put $
+            state
+              {
+                spcJobsPending = removeJob jobId jobsPendingList,
+                spcJobsRunning = jobsRunningList ++ [(jobId, job)],
+                spcWorkerList = addJobId name jobId workerList
+
+              }
+
+
+    -- data Worker = Worker (Server WorkerMsg)
+
 
 jobDone :: JobId -> JobDoneReason -> SPCM ()
 jobDone = undefined
@@ -171,14 +210,31 @@ jobDone = undefined
 workerIsIdle :: WorkerName -> Worker -> SPCM ()
 workerIsIdle = undefined
 
+
+
 workerIsGone :: WorkerName -> SPCM ()
 workerIsGone = undefined
 
 checkTimeouts :: SPCM ()
 checkTimeouts = pure () -- change in Task 4
 
+getSnd :: (a, b, c) -> b
+getSnd (_, x, _) = x
+
+getFst :: (a, b, c) -> a
+getFst (x, _, _) = x
+
+getTrd :: (a, b, c) -> c
+getTrd (_, _, x) = x
+
 workerExists :: WorkerName -> SPCM Bool
-workerExists = undefined
+workerExists name = do
+  state <- get
+  if name `elem` map getSnd (spcWorkerList state)
+    then
+      pure True
+    else
+      pure False
 
 handleMsg :: Chan SPCMsg -> SPCM ()
 handleMsg c = do
@@ -206,6 +262,169 @@ handleMsg c = do
         (_, Just _, _) -> JobRunning
         (_, _, Just r) -> JobDone r
         _ -> JobUnknown
+    MsgWorkerAdd name rsvp -> do
+      exist <- workerExists name
+      if exist
+        then
+          io $ reply rsvp $ Left ("Name already exists" ++ show name)
+        else do
+          state <- get
+          tmp <- io $ spawn $ \workerMsg -> workerLoop name c workerMsg
+          let worker = Worker tmp
+          let workerList = spcWorkerList state
+          put $
+            state
+              {
+                spcWorkerList =
+                  workerList ++ [(worker, name, Nothing)]
+              }
+          io $ reply rsvp $ Right worker
+    MsgWorkerDone jobId name jobDoneReason -> do
+      state <- get
+      let workerList = spcWorkerList state
+      let jobsDoneList = spcJobsDone state
+      let jobsRunnigList = spcJobsRunning state
+      let newWorkerList = updateWorkerList name workerList
+      put $
+        state
+          {
+            spcJobsRunning =
+              removeJob jobId jobsRunnigList,
+            spcJobsDone =
+              jobsDoneList ++ [(jobId, jobDoneReason)],
+            spcWorkerList =
+              newWorkerList
+          }
+    MsgTick ->
+      pure ()
+    MsgJobCancel jobId -> do
+      state <- get
+      let jobsPendingList = spcJobsPending state
+      let jobsDoneList = spcJobsDone state
+      let waitingList = spcWaiting state
+      case lookup jobId jobsPendingList of
+        Just _ ->
+          put $
+            state
+              {
+                spcJobsPending = removeJob jobId jobsPendingList,
+                spcJobsDone = jobsDoneList ++ [(jobId,DoneCancelled)],
+                spcWaiting = updateWaitingList jobId waitingList
+              }
+        Nothing ->
+          let jobsRunningList = spcJobsRunning state
+          in case lookup jobId jobsRunningList of
+            Nothing -> pure ()
+            Just _ -> do
+              let workerList = spcWorkerList state
+              let temp = workerJobIdLookup jobId workerList
+                in case temp of
+                  Nothing -> pure ()
+                  Just (Worker s, name) -> do
+                    let jobMsg = MsgWorkerJobCancel jobId
+                    io $ sendTo s jobMsg
+                    put $
+                      state
+                        {
+                          spcJobsRunning = removeJob jobId jobsRunningList,
+                          spcWorkerList = updateWorkerList name workerList,
+                          spcJobsDone = jobsDoneList ++ [(jobId,DoneCancelled)],
+                          spcWaiting = updateWaitingList jobId waitingList
+                        }
+
+    MsgJobWait jobId rsvp -> do
+      state <- get
+      let jobsDoneList = spcJobsDone state
+      let waitingList = spcWaiting state
+      case lookup jobId jobsDoneList of
+        Just reason -> io $ reply rsvp reason
+        Nothing -> do
+          put $
+            state
+              {
+                spcWaiting = waitingList ++ [(jobId, rsvp)]
+              }
+--put $ state {spcWaiting = (jobid, rsvp) : spcWaiting state}
+    --_ -> undefined
+
+-- spcJobsPending -> just remove it
+-- spcJobs running -> tell the worker to stop and remove the job
+
+
+workerLoop :: WorkerName -> Chan SPCMsg -> Chan WorkerMsg -> IO()
+workerLoop name cSPCMsg cWMsg = do
+  todo <- receive cWMsg
+  case todo of
+    MsgJobToDo job jobId -> do
+      jobAction job
+      send cSPCMsg $ MsgWorkerDone jobId name Done
+    MsgWorkerJobCancel _ -> pure ()
+
+  workerLoop name cSPCMsg cWMsg
+
+-- Removes a specific job from list of jobs
+removeJob :: JobId -> [(JobId, Job)] -> [(JobId, Job)]
+removeJob _ [] = []
+removeJob job (c:cs) = if job == fst c
+  then
+    cs
+  else
+    c : removeJob job cs
+
+-- changes the Maybe JobId to nothing for a specific WorkerName
+updateWorkerList :: WorkerName -> [(Worker, WorkerName, Maybe JobId)] -> [(Worker, WorkerName, Maybe JobId)]
+updateWorkerList _ [] = []
+updateWorkerList name (c:cs) =
+  if name == getSnd c
+    then
+      (getFst c ,getSnd c, Nothing) : cs
+    else
+      c : updateWorkerList name cs
+
+addJobId :: WorkerName -> JobId -> [(Worker, WorkerName, Maybe JobId)] -> [(Worker, WorkerName, Maybe JobId)]
+addJobId _ _ [] = []
+addJobId name jobId (c:cs) = if name == getSnd c
+  then
+    (getFst c, getSnd c, Just jobId): cs
+  else
+    c : cs
+
+-- Checks all workers and returns a worker if it's available
+checkWorkerAvailability :: [(Worker, WorkerName, Maybe JobId)] -> Maybe(Worker, WorkerName)
+checkWorkerAvailability [] = Nothing
+checkWorkerAvailability (c:cs) =
+  if getTrd c == Nothing
+    then
+      Just $ (getFst c, getSnd c)
+    else
+      checkWorkerAvailability cs
+
+checkIdleWorker :: WorkerName -> [(Worker, WorkerName, Maybe JobId)] -> Maybe JobId
+checkIdleWorker _ [] = Nothing
+checkIdleWorker name (c:cs) = if name == getSnd c
+  then
+    getTrd c
+  else
+    checkIdleWorker name cs
+
+workerJobIdLookup :: JobId -> [(Worker, WorkerName, Maybe JobId)] -> Maybe (Worker, WorkerName)
+workerJobIdLookup _ [] = Nothing
+workerJobIdLookup jobId (c:cs) = case getTrd c of
+  Nothing -> workerJobIdLookup jobId cs
+  Just jobId' -> if jobId' == jobId
+    then
+      Just (getFst c, getSnd c)
+    else workerJobIdLookup jobId cs
+
+updateWaitingList :: JobId -> [(JobId, ReplyChan JobDoneReason)] -> [(JobId, ReplyChan (JobDoneReason))]
+updateWaitingList _ [] = []
+updateWaitingList jobId (c:cs) = if jobId == fst c
+  then
+    updateWaitingList jobId cs
+  else
+    c : updateWaitingList jobId cs
+
+
 
 startSPC :: IO SPC
 startSPC = do
@@ -214,7 +433,9 @@ startSPC = do
           { spcJobCounter = JobId 0,
             spcJobsPending = [],
             spcJobsRunning = [],
-            spcJobsDone = []
+            spcJobsDone = [],
+            spcWorkerList = [],
+            spcWaiting = []
           }
   c <- spawn $ \c -> runSPCM initial_state $ forever $ handleMsg c
   void $ spawn $ timer c
@@ -247,9 +468,11 @@ jobCancel (SPC c) jobid =
 -- | Add a new worker with this name. Fails with 'Left' if a worker
 -- with that name already exists.
 workerAdd :: SPC -> WorkerName -> IO (Either String Worker)
-workerAdd = undefined
+workerAdd (SPC c) name =
+  requestReply c $ MsgWorkerAdd name
 
 -- | Shut down a running worker. No effect if the worker is already
 -- terminated.
 workerStop :: Worker -> IO ()
 workerStop = undefined
+
