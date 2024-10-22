@@ -28,6 +28,7 @@ tests =
       testCase "Add a worker, remove it, then add new worker with the same name" addWorkerSameName,
       testCase "Add Job After worker deletion" addJobAfterWorkerDeletion,
       testCase "Exception after Timeout" exceptionAfterTimeout,
+      testCase "Worker executes job cancel, worker executes further job" jobAfterCancel,
       testCase "Worker executes job timeout, worker executes further job" jobAfterTimeout,
       testCase "Worker executes job exception, worker executes furhter job" jobAfterCrash,
       testCase "Job1 has a long timeout, which causes job2 to timeout" oldTimeoutCancel
@@ -233,6 +234,38 @@ exceptionAfterTimeout = do
 
   result <- readIORef resultRef
   result @?= False
+
+jobAfterCancel :: IO ()
+jobAfterCancel = do
+  spc <- startSPC
+  _ <- workerAdd spc "worker"
+  resultRef1 <- newIORef False
+  resultRef2 <- newIORef False
+
+  let job1 = createJob (threadDelay 100000 >> writeIORef resultRef1 True) 1
+
+  jobId1 <- jobAdd spc job1
+
+  jobCancel spc jobId1
+
+  threadDelay 110000
+
+  reason1 <- jobWait spc jobId1
+  reason1 @?= DoneCancelled
+
+  result1 <- readIORef resultRef1
+  result1 @?= False
+
+  let job2 = createJob (writeIORef resultRef2 True) 1
+
+  jobId2 <- jobAdd spc job2
+  threadDelay 100000
+
+  reason2 <- jobWait spc jobId2
+  reason2 @?= Done
+
+  result2 <- readIORef resultRef2
+  result2 @?= True
 
 
 jobAfterTimeout :: IO ()
