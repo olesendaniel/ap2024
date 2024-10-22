@@ -273,7 +273,7 @@ handleMsg c = do
           io $ reply rsvp $ Left ("Name already exists" ++ show name)
         else do
           state <- get
-          tmp <- io $ spawn $ \workerMsg -> workerLoop name c workerMsg Nothing
+          tmp <- io $ spawn $ \workerMsg -> workerLoop name c workerMsg Nothing Nothing
           let worker = Worker tmp
           let workerList = spcWorkerList state
           put $
@@ -383,52 +383,63 @@ handleMsg c = do
               }
 
 -- spcWaiting :: [(JobId, ReplyChan JobDoneReason)]
-workerLoop :: WorkerName -> Chan SPCMsg -> Chan WorkerMsg -> Maybe ThreadId -> IO()
-workerLoop name cSPCMsg cWMsg tid = do
+workerLoop :: WorkerName -> Chan SPCMsg -> Chan WorkerMsg -> Maybe ThreadId -> Maybe ThreadId -> IO()
+workerLoop name cSPCMsg cWMsg wTid tTid = do
   todo <- receive cWMsg
   case todo of
     MsgJobToDo job jobId -> do
       newTid <- forkIO $ workerChild name job jobId cWMsg
-      _ <- forkIO $ timeoutThread name job jobId cWMsg
-      workerLoop name cSPCMsg cWMsg $ Just newTid
-    MsgWorkerJobCancel _ ->
-      case tid of
+      timeoitTid <- forkIO $ timeoutThread name job jobId cWMsg
+      workerLoop name cSPCMsg cWMsg (Just newTid) (Just timeoitTid)
+    MsgWorkerJobCancel _ -> do
+      killTimeoutThread tTid
+      case wTid of
         Just t -> do
           killThread t
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
         Nothing -> do
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
     MsgChildWorkerDone j n -> do
+      killTimeoutThread tTid
       send cSPCMsg $ MsgWorkerDone j n Done
-      case tid of
+      case wTid of
         Just t -> do
           killThread t
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
         Nothing -> do
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
     MsgJobTimeout j n -> do
+      killTimeoutThread tTid
       send cSPCMsg $ MsgWorkerDone j n DoneTimeout
-      case tid of
+      case wTid of
         Just t -> do
           killThread t
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
         Nothing -> do
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
     MsgJobCrashed j n -> do
+      killTimeoutThread tTid
       send cSPCMsg $ MsgWorkerDone j n DoneCrashed
-      case tid of
+      case wTid of
         Just t -> do
           killThread t
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
         Nothing -> do
-          workerLoop name cSPCMsg cWMsg Nothing
+          workerLoop name cSPCMsg cWMsg Nothing Nothing
     MsgWorkerRemove -> do
+      killTimeoutThread tTid
       send cSPCMsg $ MsgWorkerDeleted name
-      case tid of
+      case wTid of
         Just t -> do
           killThread t
         Nothing -> do
           pure ()
+
+killTimeoutThread :: Maybe ThreadId -> IO ()
+killTimeoutThread tid = case tid of
+  Just t -> killThread t
+  Nothing -> pure ()
+
 
 workerChild :: WorkerName -> Job -> JobId -> Chan WorkerMsg -> IO()
 workerChild name job jobId cWMsg = do
